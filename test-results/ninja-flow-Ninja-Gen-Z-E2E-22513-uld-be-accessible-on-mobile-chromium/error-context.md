@@ -1,0 +1,186 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5] [cursor=pointer]: "N"
+        - button "Add New Workspace" [ref=e6]:
+          - img [ref=e7]
+      - generic [ref=e8]:
+        - generic [ref=e9]:
+          - generic [ref=e10]:
+            - generic [ref=e12]: S
+            - heading "Select Workspace" [level=1] [ref=e13]
+          - button [ref=e14]:
+            - img
+        - generic [ref=e15]:
+          - link "Dashboard" [ref=e16] [cursor=pointer]:
+            - /url: /dashboard
+            - button "Dashboard" [ref=e19]:
+              - img
+              - generic [ref=e20]: Dashboard
+          - link "Dojo" [ref=e21] [cursor=pointer]:
+            - /url: /dojo
+            - button "Dojo" [ref=e23]:
+              - img
+              - generic [ref=e24]: Dojo
+          - link "Content Studio" [ref=e25] [cursor=pointer]:
+            - /url: /content
+            - button "Content Studio" [ref=e27]:
+              - img
+              - generic [ref=e28]: Content Studio
+          - link "Projects" [ref=e29] [cursor=pointer]:
+            - /url: /projects
+            - button "Projects" [ref=e31]:
+              - img
+              - generic [ref=e32]: Projects
+          - link "Calendar" [ref=e33] [cursor=pointer]:
+            - /url: /calendar
+            - button "Calendar" [ref=e35]:
+              - img
+              - generic [ref=e36]: Calendar
+          - link "Meetings" [ref=e37] [cursor=pointer]:
+            - /url: /meetings
+            - button "Meetings" [ref=e39]:
+              - img
+              - generic [ref=e40]: Meetings
+          - link "Flash Reports" [ref=e41] [cursor=pointer]:
+            - /url: /reports
+            - button "Flash Reports" [ref=e43]:
+              - img
+              - generic [ref=e44]: Flash Reports
+          - link "Ninja Flows" [ref=e45] [cursor=pointer]:
+            - /url: /automation
+            - button "Ninja Flows" [ref=e47]:
+              - img
+              - generic [ref=e48]: Ninja Flows
+          - link "Strategy Hub" [ref=e49] [cursor=pointer]:
+            - /url: /strategy
+            - button "Strategy Hub" [ref=e51]:
+              - img
+              - generic [ref=e52]: Strategy Hub
+          - link "Brand Kit" [ref=e53] [cursor=pointer]:
+            - /url: /brand
+            - button "Brand Kit" [ref=e55]:
+              - img
+              - generic [ref=e56]: Brand Kit
+          - link "Intel" [ref=e57] [cursor=pointer]:
+            - /url: /intel
+            - button "Intel" [ref=e59]:
+              - img
+              - generic [ref=e60]: Intel
+          - link "Ad Center" [ref=e61] [cursor=pointer]:
+            - /url: /ads
+            - button "Ad Center" [ref=e63]:
+              - img
+              - generic [ref=e64]: Ad Center
+          - link "Squad" [ref=e65] [cursor=pointer]:
+            - /url: /squad
+            - button "Squad" [ref=e67]:
+              - img
+              - generic [ref=e68]: Squad
+          - link "Client Portal" [ref=e69] [cursor=pointer]:
+            - /url: /client-portal
+            - button "Client Portal" [ref=e71]:
+              - img
+              - generic [ref=e72]: Client Portal
+          - link "Archives" [ref=e73] [cursor=pointer]:
+            - /url: /archives
+            - button "Archives" [ref=e75]:
+              - img
+              - generic [ref=e76]: Archives
+        - generic [ref=e77]:
+          - button "Invite Ninja" [ref=e78]:
+            - img
+            - generic [ref=e79]: Invite Ninja
+          - link "Settings" [ref=e80] [cursor=pointer]:
+            - /url: /settings
+            - button "Settings" [ref=e82]:
+              - img
+              - generic [ref=e83]: Settings
+          - link "Notifications" [ref=e84] [cursor=pointer]:
+            - /url: /notifications
+            - button "Notifications" [ref=e86]:
+              - img
+              - generic [ref=e87]: Notifications
+          - button "Logout" [ref=e88]:
+            - img
+            - generic [ref=e89]: Logout
+      - generic [ref=e90]:
+        - generic:
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - textbox "Search tasks, personas... (Cmd+K)" [ref=e95]
+          - button [ref=e97]:
+            - img [ref=e98]
+        - main [ref=e102]:
+          - generic:
+            - generic:
+              - generic [ref=e103]:
+                - heading "Welcome back, Ninja 🥷" [level=2]
+                - paragraph: You have 0 active tasks.
+                - link "View My Tasks" [ref=e105] [cursor=pointer]:
+                  - /url: /content
+                  - button "View My Tasks" [ref=e106]
+              - generic [ref=e107]:
+                - heading "Weekly XP" [level=3]
+                - generic: "0"
+            - generic:
+              - generic [ref=e108]:
+                - paragraph: Tasks Completed
+                - paragraph: "12"
+              - generic [ref=e109]:
+                - paragraph: Client Approvals
+                - paragraph: "3"
+              - generic [ref=e110]:
+                - paragraph: AI Score Avg
+                - paragraph: "85"
+              - generic [ref=e111]:
+                - paragraph: Streak
+                - paragraph: 7 days
+            - generic:
+              - generic [ref=e112]:
+                - heading "📅 Upcoming Deadlines" [level=3]
+                - generic:
+                  - paragraph: No upcoming deadlines.
+              - generic [ref=e113]:
+                - generic [ref=e114]:
+                  - heading "Squad Leaderboard" [level=2] [ref=e115]:
+                    - img [ref=e116]
+                    - text: Squad Leaderboard
+                  - button "View All" [ref=e122]
+                - generic [ref=e123]:
+                  - generic [ref=e124]:
+                    - generic [ref=e125]: "#1"
+                    - generic [ref=e126]:
+                      - generic [ref=e127]: Sarah J.
+                      - generic [ref=e128]: Lvl 3 • 1200 XP
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: "#2"
+                    - generic [ref=e136]:
+                      - generic [ref=e137]: Mike T.
+                      - generic [ref=e138]: Lvl 2 • 850 XP
+                  - generic [ref=e139]:
+                    - generic [ref=e140]: "#3"
+                    - generic [ref=e141]:
+                      - generic [ref=e142]: Karim (You)
+                      - generic [ref=e143]: Lvl 1 • 0 XP
+              - generic [ref=e144]:
+                - heading "⚡ Recent Activity" [level=3]
+                - generic:
+                  - paragraph: No recent activity.
+    - button [active] [ref=e146]:
+      - img
+    - generic:
+      - button
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e155] [cursor=pointer]:
+    - generic [ref=e158]:
+      - text: Compiling
+      - generic [ref=e159]:
+        - generic [ref=e160]: .
+        - generic [ref=e161]: .
+        - generic [ref=e162]: .
+```

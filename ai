@@ -1,0 +1,298 @@
+🏛️ المرحلة 1: البنية التحتية (Supabase Database)
+الايجنت محتاج "نوتة" يكتب فيها. هنعمل جدول جديد في Supabase مخصص للذكريات.
+
+نفذ كود SQL ده في Supabase SQL Editor:
+
+SQL
+
+-- جدول لتخزين الذكريات والملاحظات الدائمة
+create table sensei_memories (
+  id uuid default gen_random_uuid() primary key,
+  workspace_id uuid references workspaces(id) not null,
+  content text not null, -- المعلومة نفسها (مثلاً: العميل بيكره اللون الأحمر)
+  category text check (category in ('preference', 'fact', 'plan', 'insight')) default 'fact',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- تفعيل RLS (الأمان)
+alter table sensei_memories enable row level security;
+
+-- السماح للأعضاء بالقراءة والكتابة
+create policy "Enable all access for workspace members" on sensei_memories
+  for all using (
+    workspace_id in (
+      select workspace_id from workspace_members where user_id = auth.uid()
+    )
+  );
+💾 المرحلة 2: دوال الداتابيز (lib/supabase/queries.ts)
+هنضيف دالتين: واحدة عشان "يكتب" في الذاكرة، وواحدة عشان "يفتكر".
+
+ضيف الكود ده في queries.ts:
+
+TypeScript
+
+// ... (Imports القديمة)
+
+// 1. استرجاع الذكريات (Memory Retrieval)
+export async function getAgentMemories(workspaceId: string, supabase: any, limit: number = 5) {
+  const { data } = await supabase
+    .from('sensei_memories')
+    .select('content, category, created_at')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false }) // هات أحدث الذكريات
+    .limit(limit);
+  
+  return data || [];
+}
+
+// (ملحوظة: دالة الإضافة مش محتاجينها هنا، هنكتبها جوه الـ Tool مباشرة للسرعة)
+🛠️ المرحلة 3: أدوات الذاكرة (lib/ai/tools.ts)
+هنضيف 2 Tools جداد. الايجنت هيستخدمهم لما يحس إن فيه معلومة تستاهل الحفظ، أو لما يحتاج يفتكر حاجة.
+
+حدث ملف tools.ts وضيف الأدوات دي للقائمة:
+
+TypeScript
+
+// ... (داخل كائن tools)
+
+  // Tool 1: حفظ معلومة مهمة (Write Memory)
+  save_memory: tool({
+    description: 'Save important information, user preferences, or strategic plans for long-term retention. Use this ONLY for permanent facts, NOT for temporary conversation.',
+    parameters: z.object({
+      content: z.string().describe('The fact/preference to remember (e.g., "Client X hates red", "Use formal tone in reports")'),
+      category: z.enum(['preference', 'fact', 'plan', 'insight']).describe('Type of memory'),
+    }),
+    execute: async ({ content, category }) => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, message: 'User not authenticated' };
+      
+      // Get workspace_id (simulated for brevity, ensure you reuse your helper in real code)
+      const { data: member } = await supabase.from('workspace_members').select('workspace_id').eq('user_id', user.id).single();
+      
+      const { error } = await supabase.from('sensei_memories').insert({
+        workspace_id: member.workspace_id,
+        content,
+        category
+      });
+
+      if (error) return { success: false, message: `Failed to save memory: ${error.message}` };
+      return { success: true, message: '✅ I stored this in my long-term memory.' };
+    },
+  }),
+
+  // Tool 2: البحث في الذاكرة (Read Memory)
+  read_memories: tool({
+    description: 'Retrieve past memories, user preferences, or saved plans. Use this when the user asks about past decisions or "what do you know about X".',
+    parameters: z.object({
+      query_category: z.enum(['preference', 'fact', 'plan', 'insight', 'all']).optional().default('all'),
+    }),
+    execute: async ({ query_category }) => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: member } = await supabase.from('workspace_members').select('workspace_id').eq('user_id', user.id).single();
+
+      let query = supabase.from('sensei_memories').select('content, category, created_at').eq('workspace_id', member.workspace_id).order('created_at', { ascending: false }).limit(10);
+      
+      if (query_category !== 'all') {
+        query = query.eq('category', query_category);
+      }
+
+      const { data } = await query;
+      
+      if (!data || data.length === 0) return { success: true, message: 'My memory is empty.' };
+      
+      const formatted = data.map(m => `• [${m.category.toUpperCase()}] ${m.content}`).join('\n');
+      return { success: true, message: `Here is what I remember:\n${formatted}` };
+    },
+  }),
+
+// ... (باقي الأدوات)
+🧠 المرحلة 4: تعديل الـ System Prompt (lib/ai/system-prompt.ts)
+دي أهم خطوة. لازم نعرف الايجنت إن عنده "ذاكرة" وإنه لازم يستخدمها بذكاء، مش عمال على بطال.
+
+هنعمل تعديل في formatContext عشان تجيب آخر 3 ذكريات تلقائياً وتحقنهم في الـ Context (عشان مش كل مرة يعمل Tool Call).
+
+الكود الكامل المحدث لـ system-prompt.ts (النسخة النهائية مع الذاكرة):
+
+TypeScript
+
+import { WorkspaceContext, getAgentMemories } from '@/lib/supabase/queries';
+
+export interface UserInfo {
+  name: string;
+  email: string;
+}
+
+// واجهة جديدة للبيانات
+interface EnhancedContext extends WorkspaceContext {
+  recentMemories: any[];
+}
+
+function formatContext(context: EnhancedContext) {
+  const projects = context.projects.map(p => 
+    `- ID: [${p.id}] | Name: ${p.name} | Status: ${p.status}`
+  ).join('\n');
+
+  // تنسيق الذاكرة عشان الايجنت يشوفها
+  const memories = context.recentMemories.length > 0
+    ? context.recentMemories.map(m => `🧠 [MEMORY]: ${m.content}`).join('\n')
+    : "(No prior memories set)";
+
+  return { projects, memories };
+}
+
+export function buildSystemPrompt(context: EnhancedContext, user: UserInfo): string {
+  const { projects, memories } = formatContext(context);
+  const today = new Date().toLocaleDateString('ar-EG');
+
+  return `
+You are **Ninja Gen Z**, the elite AI Operation Manager.
+Your goal is to manage workflow and **retain critical long-term context**.
+
+<user_context>
+User: ${user.name}
+Date: ${today}
+</user_context>
+
+<memory_stream>
+${memories}
+</memory_stream>
+
+<live_database_context>
+AVAILABLE PROJECTS:
+${projects}
+</live_database_context>
+
+<agent_loop>
+1. **Analyze**: Check user intent.
+2. **Recall**: DOES THIS REQUIRE MEMORY?
+   - If user shares a preference (e.g., "I hate emails"), use tool \`save_memory\`.
+   - If user asks "What did we plan?", use tool \`read_memories\`.
+3. **Validate**: Check Project IDs.
+4. **Execute**: Run tools.
+5. **Response**: Confirm actions.
+</agent_loop>
+
+<memory_rules>
+- **Strict Filtering**: DO NOT save chit-chat (e.g., "Hello", "How are you"). ONLY save:
+  1. **Preferences**: "User likes dark mode reports".
+  2. **Facts**: "Client X budget is 50k".
+  3. **Plans**: "We agreed to launch on Friday".
+- **Retrieval**: Before saying "I don't know", CHECK your memory via \`read_memories\`.
+- **Privacy**: Never save passwords or sensitive secrets.
+</memory_rules>
+
+<tool_use_rules>
+- **Implicit Memory**: If the <memory_stream> above already answers the user's question, DO NOT call \`read_memories\` again. Use the info directly.
+- **Confirmation**: When saving a memory, tell the user: "✅ Got it, I'll keep that in mind."
+</tool_use_rules>
+`;
+}
+🚨 نقطة أخيرة مهمة في app/api/chat/route.ts
+لازم تعدل الـ Route عشان يجيب الـ Memories وهو بيحضر الـ Context.
+
+TypeScript
+
+// ... داخل POST function
+    
+    // 1. جيب الـ Context العادي
+    const context = await getWorkspaceContext(userId, supabase);
+    
+    // 2. [جديد] جيب آخر 5 ذكريات
+    const recentMemories = await getAgentMemories(context.workspace_id, supabase, 5);
+    
+    // 3. ادمجهم
+    const enhancedContext = { ...context, recentMemories };
+    
+    // 4. ابني البرومبت
+    const systemPrompt = buildSystemPrompt(enhancedContext, user);
+
+// ... كمل الكود زي ما هو
+📝 ملخص التعليمات الصارمة (Checklist):
+أنشئ جدول sensei_memories في Supabase.
+
+ضف دالة getAgentMemories في queries.ts.
+
+ضف save_memory و read_memories في tools.ts.
+
+حدث system-prompt.ts ليحتوي على <memory_rules> ويعرض الذكريات.
+
+حدث route.ts ليجلب الذكريات ويحقنها في الـ Prompt.
+
+نفذ الخطوات دي بالترتيب ده، وهتلاقي "السينسي" بقى عنده ذاكرة حديدية! 🧠
+
+
+
+
+import { WorkspaceContext } from '@/lib/supabase/queries';
+
+export interface UserInfo {
+  name: string;
+  email: string;
+}
+
+function formatContext(context: WorkspaceContext) {
+  const projects = context.projects.map(p => 
+    `- ID: [${p.id}] | Name: ${p.name} | Status: ${p.status}`
+  ).join('\n');
+
+  const urgentTasks = context.tasks
+    .slice(0, 5)
+    .map(t => `- Task: ${t.title} | Priority: ${t.priority} | ID: ${t.id}`)
+    .join('\n');
+
+  return { projects, urgentTasks };
+}
+
+export function buildSystemPrompt(context: WorkspaceContext, user: UserInfo): string {
+  const { projects, urgentTasks } = formatContext(context);
+  const today = new Date().toLocaleDateString('ar-EG');
+
+  return `
+You are **Ninja Gen Z**, a specialized AI Agent inspired by advanced autonomous systems.
+Your goal is to manage the agency's workflow using strict data constraints and strategic planning.
+
+<user_context>
+User: ${user.name}
+Date: ${today}
+</user_context>
+
+<live_database_context>
+AVAILABLE PROJECTS (Strictly use these IDs):
+${projects || "No active projects found."}
+
+RECENT TASKS:
+${urgentTasks}
+</live_database_context>
+
+<agent_loop>
+You operate in a thought loop. Before replying, you must strictly follow these steps:
+1. **Analyze**: Understand the user's intent (Create, Query, Update).
+2. **Validate**: Check if you have the required Project IDs in the <live_database_context>.
+   - IF ID is missing: ASK the user. DO NOT GUESS.
+3. **Plan**: If the request is complex, break it down (e.g., "First I'll find the project, then I'll create the meeting").
+4. **Execute**: Call the appropriate tool.
+5. **Response**: Report back in "Egyptian Business" tone.
+</agent_loop>
+
+<tool_use_rules>
+- **No Hallucination**: Never invent IDs or tool names. Only use the tools provided in the definition.
+- **Missing Args**: If a tool requires arguments (like 'project_id') and you don't have it, STOP and ask the user.
+- **Output**: When a tool succeeds, confirm with a checkmark ✅ and a brief summary.
+</tool_use_rules>
+
+<communication_style>
+- Tone: Professional, Efficient, Egyptian Arabic (Sensei Style).
+- Format: Use Bullet points for lists, Bold for numbers.
+- Brevity: Be concise. Don't explain *how* you did it, just say *what* you did.
+</communication_style>
+
+<example_interaction>
+User: "اعمل تاسك جديد لفودافون"
+Thought: User wants to create a task. I see 'Vodafone' in context with ID 'proj_voda'.
+Action: Call tool 'create_task' with project_id='proj_voda'.
+Response: "✅ تم يا ريس، ضفت التاسك لمشروع فودافون."
+</example_interaction>
+`;
+}

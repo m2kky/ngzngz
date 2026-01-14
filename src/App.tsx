@@ -8,8 +8,11 @@ import { TasksPage } from "@/features/tasks/pages/TasksPage";
 import { RecordPage } from "@/components/records/RecordPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
+import { AcceptInvitePage } from "@/features/onboarding/pages/AcceptInvitePage";
+import { SignupPage } from "@/features/auth/pages/SignupPage";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import { Loader2 } from "lucide-react";
 
 function ProtectedRoute() {
@@ -44,18 +47,22 @@ function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/tasks/:taskId" element={<RecordPage />} />
-        </Route>
-      </Routes>
+      <WorkspaceProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/invite/:token" element={<AcceptInvitePage />} />
+          
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/clients" element={<ClientsPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/tasks/:taskId" element={<RecordPage />} />
+          </Route>
+        </Routes>
+      </WorkspaceProvider>
     </BrowserRouter>
   );
 }

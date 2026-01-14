@@ -258,6 +258,44 @@ export interface Database {
           updated_at?: string
         }
       }
+      invitations: {
+        Row: {
+          id: string
+          workspace_id: string
+          email: string
+          role: 'owner' | 'admin' | 'member' | 'guest'
+          token: string
+          status: 'pending' | 'accepted'
+          expires_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          email: string
+          role?: 'owner' | 'admin' | 'member' | 'guest'
+          token?: string
+          status?: 'pending' | 'accepted'
+          expires_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          email?: string
+          role?: 'owner' | 'admin' | 'member' | 'guest'
+          token?: string
+          status?: 'pending' | 'accepted'
+          expires_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       workspace_join_requests: {
         Row: {
           id: string
@@ -287,6 +325,20 @@ export interface Database {
           responded_by?: string | null
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      accept_invitation: {
+        Args: {
+          lookup_token: string
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 }

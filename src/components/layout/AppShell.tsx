@@ -1,5 +1,5 @@
 import { DesktopSidebar } from './DesktopSidebar';
-import { MobileBottomBar } from './MobileBottomBar';
+import { MobileBottomNav } from './MobileBottomNav';
 import { isMobile } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
@@ -19,11 +19,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col h-full overflow-hidden relative">
         {/* Header will go here */}
         
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-20 md:pb-4">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4">
           {children}
         </main>
 
-        {isMobileView && <MobileBottomBar />}
+        {isMobileView && <MobileBottomNav />}
       </div>
     </div>
   );

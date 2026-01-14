@@ -64,6 +64,8 @@ const PRIORITY_OPTIONS: PropertyOption[] = [
   { label: 'Urgent', value: 'urgent' },
 ];
 
+import { ClientReviewControls } from "./ClientReviewControls";
+
 export function RecordSheet({ open, onClose, recordId, type }: RecordSheetProps) {
   const [mode, setMode] = useState<ViewMode>('side');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -181,6 +183,7 @@ export function RecordSheet({ open, onClose, recordId, type }: RecordSheetProps)
     setIsSidebarOpen,
     propertyDialogOpen,
     setPropertyDialogOpen,
+    fetchRecord,
   };
 
   if (mode === 'center') {
@@ -200,7 +203,7 @@ export function RecordSheet({ open, onClose, recordId, type }: RecordSheetProps)
       <Sheet open={open} onOpenChange={onClose} modal={false}>
         <SheetContent 
           side="right"
-          className="w-[calc(100vw-256px)] sm:max-w-none p-0 gap-0 overflow-hidden [&>button[type=button]]:hidden transition-all duration-300 bg-background border-l shadow-none"
+          className="w-full lg:w-[calc(100vw-256px)] sm:max-w-none p-0 gap-0 overflow-hidden [&>button[type=button]]:hidden transition-all duration-300 bg-background border-l shadow-none"
           aria-describedby={undefined}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
@@ -250,6 +253,7 @@ function RecordContent({
   setIsSidebarOpen,
   propertyDialogOpen,
   setPropertyDialogOpen,
+  fetchRecord,
   isFullScreen = false
 }: any) { // Using any for props briefly to avoid huge interface, in real app usage interface
 
@@ -528,6 +532,11 @@ function RecordContent({
                       </Button>
                   </div>
                </div>
+
+               {/* Client Controls (Fixed at top of content, but scrollable with page or fixed? Fixed is better visibility) */}
+               {type === 'task' && record && (
+                  <ClientReviewControls record={record} onUpdate={fetchRecord} />
+               )}
 
                <ScrollArea className="flex-1 h-full"> 
                  <div className="flex flex-col min-h-full">

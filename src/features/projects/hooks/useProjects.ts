@@ -64,7 +64,7 @@ export function useProjects() {
 
   useEffect(() => {
     fetchProjects();
-  }, [workspace]);
+  }, [workspace?.id]);
 
   const createProject = async (input: CreateProjectInput) => {
     if (!workspace) throw new Error('No workspace selected');

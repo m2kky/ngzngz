@@ -21,11 +21,11 @@ export function useWorkspaceMembers() {
       
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // 1. Fetch active members
+        const { data: membersData, error: membersError } = await supabase
           .from('workspace_members' as any)
           .select(`
             user_id,
-            role,
             users (
               id,
               full_name,
@@ -36,16 +36,30 @@ export function useWorkspaceMembers() {
           .eq('workspace_id', workspace.id)
           .eq('status', 'active');
 
-        if (error) throw error;
+        if (membersError) throw membersError;
 
-        // Flatten the structure
+        // 2. Fetch roles for this workspace
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .eq('workspace_id', workspace.id);
+
+        if (rolesError) throw rolesError;
+
+        // Map roles by user_id
+        const rolesMap = new Map();
+        if (rolesData) {
+            rolesData.forEach((r: any) => rolesMap.set(r.user_id, r.role));
+        }
+
+        // 3. Merge data
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const formattedMembers = data.map((item: any) => ({
+        const formattedMembers = membersData.map((item: any) => ({
           id: item.users.id,
           full_name: item.users.full_name || item.users.email,
           email: item.users.email,
           avatar_url: item.users.avatar_url,
-          role: item.role
+          role: rolesMap.get(item.users.id) || 'member' // Default to member if no role found
         }));
 
         setMembers(formattedMembers);

@@ -7,95 +7,113 @@ type Workspace = Database['public']['Tables']['workspaces']['Row'];
 type WorkspaceMember = Database['public']['Tables']['workspace_members']['Row'];
 
 export function useWorkspace() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [member, setMember] = useState<WorkspaceMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchWorkspace() {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
 
-      try {
-        // 1. Get user's membership
-        const { data: members, error: memberError } = await supabase
-          .from('workspace_members' as any)
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .limit(1);
+  const fetchWorkspace = async () => {
+    if (authLoading) return;
 
-        if (memberError) throw memberError;
-
-        if (members && members.length > 0) {
-          const currentMember = members[0];
-          setMember(currentMember);
-
-          // 2. Get workspace details
-          const { data: workspaceData, error: workspaceError } = await supabase
-            .from('workspaces' as any)
-            .select('*')
-            .eq('id', currentMember.workspace_id)
-            .single();
-
-          if (workspaceError) throw workspaceError;
-          setWorkspace(workspaceData);
-        } else {
-          // Fallback for demo: If user has no workspace, try to fetch the demo workspace
-          // Note: In production, we would redirect to onboarding
-          console.log('No membership found, checking for demo workspace...');
-          
-          const { data: demoWorkspaces, error: demoError } = await supabase
-            .from('workspaces')
-            .select('*')
-            .eq('slug', 'ninjawy-demo')
-            .limit(1);
-
-          if (!demoError && demoWorkspaces && demoWorkspaces.length > 0) {
-             const demoWorkspace = demoWorkspaces[0];
-             // Auto-join the demo workspace for now (Client-side logic for MVP dev)
-             // Ideally this should be a server action or user action
-             const { error: joinError } = await supabase
-               .from('workspace_members')
-               .insert({
-                 workspace_id: demoWorkspace.id,
-                 user_id: user.id,
-                 role: 'admin', // Auto-admin for dev
-                 status: 'active'
-               });
-             
-             // If insert succeeds OR conflicts (already member), try to fetch again
-             if (!joinError || joinError.code === '23505' || joinError.code === '409') {
-               if (joinError) console.log('Member already exists, refreshing...');
-               
-               setWorkspace(demoWorkspace);
-               // Refresh member
-               const { data: newMember } = await supabase
-                 .from('workspace_members')
-                 .select('*')
-                 .eq('workspace_id', demoWorkspace.id)
-                 .eq('user_id', user.id)
-                 .single();
-               setMember(newMember);
-             } else {
-               console.error('Failed to join demo workspace:', joinError);
-             }
-          }
-        }
-      } catch (err: any) {
-        console.error('Error fetching workspace:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+    if (!user) {
+      setLoading(false);
+      return;
     }
 
-    fetchWorkspace();
-  }, [user]);
+    try {
+      console.log('Fetching workspaces for user:', user.id);
+      
+      // 1. Get all memberships
+      const { data: members, error: memberError } = await supabase
+        .from('workspace_members' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
 
-  return { workspace, member, loading, error };
+      if (memberError) {
+        console.error('Member fetch error:', memberError);
+        throw memberError;
+      }
+
+      console.log('Members found:', members);
+
+      if (members && members.length > 0) {
+        // 2. Get details for ALL workspaces
+        const workspaceIds = members.map((m: any) => m.workspace_id);
+        const { data: workspacesData, error: workspacesError } = await supabase
+          .from('workspaces' as any)
+          .select('*')
+          .in('id', workspaceIds);
+
+        if (workspacesError) {
+             console.error('Workspaces details error:', workspacesError);
+             throw workspacesError;
+        }
+
+        console.log('Workspaces loaded:', workspacesData);
+        setWorkspaces(workspacesData);
+
+        // Set active workspace (first one by default if not set)
+        if (workspacesData && workspacesData.length > 0) {
+            // Find current member record for the active workspace
+            // If we already have a selected workspace, keep it if it's still valid
+            // Otherwise, pick the first one
+            let activeWorkspace = workspacesData[0];
+            
+            if (workspace) {
+              const stillExists = workspacesData.find((w: any) => w.id === workspace.id);
+              if (stillExists) {
+                activeWorkspace = stillExists;
+              }
+            }
+
+            const activeMember = members.find((m: any) => m.workspace_id === activeWorkspace.id);
+            
+            setWorkspace(activeWorkspace);
+            if (activeMember) {
+              setMember(activeMember);
+            } else {
+              setMember(null);
+            }
+        }
+      } else {
+        setWorkspaces([]);
+        setWorkspace(null);
+        setMember(null);
+      }
+    } catch (err: any) {
+      console.error('Error fetching workspace:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchWorkspace = (workspaceId: string) => {
+    const targetWorkspace = workspaces.find(w => w.id === workspaceId);
+    if (!targetWorkspace || !user) return;
+    
+    setWorkspace(targetWorkspace);
+    
+    // We need to fetch/find the member record for this workspace to ensure permissions are correct
+    // We can re-fetch just the member to be safe and ensure latest role
+     supabase
+    .from('workspace_members' as any)
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('workspace_id', workspaceId)
+    .single()
+    .then(({data}: any) => {
+        if(data) setMember(data);
+    });
+  };
+
+  useEffect(() => {
+    fetchWorkspace();
+  }, [user, authLoading]);
+
+  return { workspace, workspaces, member, loading, error, refreshWorkspace: fetchWorkspace, switchWorkspace };
 }

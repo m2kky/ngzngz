@@ -68,7 +68,7 @@ export function useDashboardStats() {
     }
 
     fetchStats();
-  }, [workspace]);
+  }, [workspace?.id]);
 
   return { stats, loading };
 }

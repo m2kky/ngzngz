@@ -55,7 +55,7 @@ export function useTasks() {
 
   useEffect(() => {
     fetchTasks();
-  }, [workspace]);
+  }, [workspace?.id]);
 
   const createTask = async (input: CreateTaskInput) => {
     if (!workspace) throw new Error('No workspace selected');

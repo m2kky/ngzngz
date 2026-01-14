@@ -55,7 +55,7 @@ export function useClients() {
 
   useEffect(() => {
     fetchClients();
-  }, [workspace]);
+  }, [workspace?.id]);
 
   const createClient = async (input: CreateClientInput) => {
     if (!workspace) throw new Error('No workspace selected');

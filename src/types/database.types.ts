@@ -18,6 +18,8 @@ export interface Database {
           theme: 'light' | 'dark' | 'system'
           background_type: 'color' | 'gradient' | 'image'
           background_value: string
+          visibility: 'private' | 'public'
+          created_by: string | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +31,8 @@ export interface Database {
           theme?: 'light' | 'dark' | 'system'
           background_type?: 'color' | 'gradient' | 'image'
           background_value?: string
+          visibility?: 'private' | 'public'
+          created_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +44,8 @@ export interface Database {
           theme?: 'light' | 'dark' | 'system'
           background_type?: 'color' | 'gradient' | 'image'
           background_value?: string
+          visibility?: 'private' | 'public'
+          created_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -81,8 +87,6 @@ export interface Database {
           id: string
           workspace_id: string
           user_id: string
-          role: 'owner' | 'admin' | 'manager' | 'strategist' | 'creative' | 'analyst' | 'hr' | 'guest'
-          access_scope: 'workspace' | 'client'
           status: 'active' | 'inactive' | 'invited'
           joined_at: string
         }
@@ -90,19 +94,39 @@ export interface Database {
           id?: string
           workspace_id: string
           user_id: string
-          role?: 'owner' | 'admin' | 'manager' | 'strategist' | 'creative' | 'analyst' | 'hr' | 'guest'
-          access_scope?: 'workspace' | 'client'
           status?: 'active' | 'inactive' | 'invited'
           joined_at?: string
+        }
         }
         Update: {
           id?: string
           workspace_id?: string
           user_id?: string
-          role?: 'owner' | 'admin' | 'manager' | 'strategist' | 'creative' | 'analyst' | 'hr' | 'guest'
-          access_scope?: 'workspace' | 'client'
           status?: 'active' | 'inactive' | 'invited'
           joined_at?: string
+        }
+      }
+      user_roles: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          role: 'owner' | 'admin' | 'member' | 'guest'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          role: 'owner' | 'admin' | 'member' | 'guest'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          role?: 'owner' | 'admin' | 'member' | 'guest'
+          created_at?: string
         }
       }
       comments: {
@@ -173,6 +197,94 @@ export interface Database {
           action_type?: string
           metadata?: Record<string, unknown>
           created_at?: string
+        }
+      }
+      tasks: {
+        Row: {
+          id: string
+          workspace_id: string
+          title: string
+          description: string | null
+          status: string
+          priority: string
+          assignee_id: string | null
+          due_date: string | null
+          content_blocks: Json
+          ai_score: number | null
+          ai_feedback: string | null
+          properties: Json
+          rejection_count: number
+          last_client_feedback: string | null
+          client_view_status: 'pending' | 'approved' | 'rejected'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          title: string
+          description?: string | null
+          status?: string
+          priority?: string
+          assignee_id?: string | null
+          due_date?: string | null
+          content_blocks?: Json
+          ai_score?: number | null
+          ai_feedback?: string | null
+          properties?: Json
+          rejection_count?: number
+          last_client_feedback?: string | null
+          client_view_status?: 'pending' | 'approved' | 'rejected'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          title?: string
+          description?: string | null
+          status?: string
+          priority?: string
+          assignee_id?: string | null
+          due_date?: string | null
+          content_blocks?: Json
+          ai_score?: number | null
+          ai_feedback?: string | null
+          properties?: Json
+          rejection_count?: number
+          last_client_feedback?: string | null
+          client_view_status?: 'pending' | 'approved' | 'rejected'
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      workspace_join_requests: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          status: 'pending' | 'approved' | 'rejected'
+          requested_at: string
+          responded_at: string | null
+          responded_by: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          status?: 'pending' | 'approved' | 'rejected'
+          requested_at?: string
+          responded_at?: string | null
+          responded_by?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          status?: 'pending' | 'approved' | 'rejected'
+          requested_at?: string
+          responded_at?: string | null
+          responded_by?: string | null
         }
       }
     }

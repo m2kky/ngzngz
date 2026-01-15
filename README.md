@@ -1,73 +1,142 @@
-# React + TypeScript + Vite
+# Ninja Gen Z - Task Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, collaborative task management platform built with React, TypeScript, and Supabase.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Task Management**: Create, view, and manage tasks with multiple views (Table & Kanban)
+- **Workspace Collaboration**: Multi-user workspaces with role-based access control
+- **Real-time Updates**: Live collaboration with Supabase real-time subscriptions
+- **Rich Task Details**: Comprehensive task information with properties, comments, and activity logs
+- **Client Portal**: Dedicated portal for clients to review and approve tasks
+- **Custom Properties**: Flexible property system for extending task metadata
+- **Dark Mode UI**: Modern, sleek interface with dark theme
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: TailwindCSS, Radix UI
+- **Backend**: Supabase (PostgreSQL, Auth, Real-time, Storage)
+- **State Management**: React Query
+- **Form Handling**: React Hook Form
+- **Drag & Drop**: @dnd-kit
+- **Tables**: TanStack Table
+- **Rich Text**: TipTap Editor
 
-## Expanding the ESLint configuration
+## 📦 Installation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Clone the repository
+git clone https://github.com/m2kky/ngzngz.git
+cd ngzngz/web
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Install dependencies
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your Supabase credentials
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Run development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔧 Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Create a `.env` file in the `web` directory:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+## 📁 Project Structure
+
+```
+web/
+├── src/
+│   ├── components/       # Reusable UI components
+│   │   ├── records/      # Record sheet components
+│   │   ├── ui/           # Base UI components (Radix)
+│   │   └── views/        # DataTable & Kanban views
+│   ├── features/         # Feature-based modules
+│   │   └── tasks/        # Task management feature
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utility libraries
+│   └── types/            # TypeScript type definitions
+├── supabase/
+│   └── migrations/       # Database migrations
+└── public/               # Static assets
+```
+
+## 🗄️ Database Schema
+
+Key tables:
+- `workspaces` - Organization units
+- `workspace_members` - User-workspace relationships
+- `tasks` - Task records
+- `projects` - Project organization
+- `clients` - Client management
+- `users` - User profiles
+- `comments` - Task comments
+- `activity_logs` - Audit trail
+
+See [DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md) for full schema details.
+
+## 🐛 Known Issues
+
+### Activity Logs & Comments Not Loading
+
+**Issue**: Users may encounter "Error loading activity" and "Error loading comments" when opening task details.
+
+**Root Cause**: PostgREST schema cache not refreshing after RLS policy updates.
+
+**Solution**: See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed resolution steps.
+
+## 🚧 Development
+
+```bash
+# Run development server
+npm run dev
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+
+# Build for production
+npm run build
+```
+
+## 📝 Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript type checking
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is private and proprietary.
+
+## 👥 Team
+
+- **Developer**: m2kky
+
+## 📞 Support
+
+For issues and questions, please open an issue on GitHub.
+
+---
+
+Built with ❤️ using React and Supabase

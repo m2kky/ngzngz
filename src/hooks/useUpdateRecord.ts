@@ -35,7 +35,7 @@ export function useUpdateRecord() {
         );
 
         for (const field of changedFields) {
-          await (supabase.from('activity_logs') as any).insert({
+          await (supabase.from('activity_log') as any).insert({
             workspace_id: workspace.id,
             user_id: user.id,
             record_type: type,
@@ -50,7 +50,7 @@ export function useUpdateRecord() {
         }
       } else if (user && workspace) {
         // If no old record, just log a generic update
-        await (supabase.from('activity_logs') as any).insert({
+        await (supabase.from('activity_log') as any).insert({
           workspace_id: workspace.id,
           user_id: user.id,
           record_type: type,

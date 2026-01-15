@@ -1,29 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useWorkspace } from '@/hooks/useWorkspace';
-
-// Temporary type until we generate types from schema
-export type Task = {
-  id: string;
-  title: string;
-  status: 'backlog' | 'in_progress' | 'internal_review' | 'client_review' | 'approved' | 'done' | 'archived';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  due_date: string | null;
-  assignee_ids: string[];
-  client_id: string | null;
-  project_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type CreateTaskInput = {
-  title: string;
-  status?: Task['status'];
-  priority?: Task['priority'];
-  due_date?: string | null;
-  client_id?: string | null;
-  project_id?: string | null;
-};
+import type { Task, CreateTaskInput } from '../types';
 
 export function useTasks() {
   const { workspace } = useWorkspace();
@@ -33,6 +11,7 @@ export function useTasks() {
 
   const fetchTasks = async () => {
     if (!workspace) return;
+
 
     try {
       setLoading(true);
@@ -77,7 +56,7 @@ export function useTasks() {
       // Log activity for task creation
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await (supabase.from('activity_logs') as any).insert({
+        await (supabase.from('activity_log') as any).insert({
           workspace_id: workspace.id,
           user_id: user.id,
           record_type: 'task',
@@ -96,5 +75,31 @@ export function useTasks() {
     }
   };
 
-  return { tasks, loading, error, createTask, refresh: fetchTasks };
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    if (!workspace) return;
+
+    try {
+      // Optimistic update
+      setTasks(prev => prev.map(t => 
+        t.id === taskId ? { ...t, ...updates } : t
+      ));
+
+      const { error } = await (supabase
+        .from('tasks') as any)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', taskId)
+        .eq('workspace_id', workspace.id);
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Error updating task:', err);
+      fetchTasks();
+      throw err;
+    }
+  };
+
+  return { tasks, loading, error, createTask, updateTask, refresh: fetchTasks };
 }

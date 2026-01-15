@@ -11,6 +11,11 @@ export type ActivityLog = {
   action_type: string;
   metadata: any;
   created_at: string;
+  users?: {
+    full_name: string | null;
+    nickname: string | null;
+    avatar_url: string | null;
+  };
 };
 
 export type CreateActivityLogInput = {
@@ -38,8 +43,8 @@ export function useActivity() {
       }
       
       const { data, error } = await supabase
-        .from('activity_logs')
-        .select('*')
+        .from('activity_log')
+        .select('*, users(full_name, nickname, avatar_url)')
         .eq('record_type', recordType)
         .eq('record_id', recordId)
         .eq('workspace_id', workspace.id)
@@ -63,7 +68,7 @@ export function useActivity() {
     try {
       setError(null);
       const { data, error } = await (supabase
-        .from('activity_logs') as any)
+        .from('activity_log') as any)
         .insert({
           record_type: input.recordType,
           record_id: input.recordId,

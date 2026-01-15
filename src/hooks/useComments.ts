@@ -12,6 +12,11 @@ export type Comment = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  users?: {
+    full_name: string | null;
+    nickname: string | null;
+    avatar_url: string | null;
+  };
 };
 
 export type CreateCommentInput = {
@@ -42,8 +47,8 @@ export function useComments() {
       }
       
       const { data, error } = await supabase
-        .from('comments')
-        .select('*')
+        .from('task_comments')
+        .select('*, users(full_name, nickname, avatar_url)')
         .eq('record_type', recordType)
         .eq('record_id', recordId)
         .eq('workspace_id', workspace.id)
@@ -67,7 +72,7 @@ export function useComments() {
     try {
       setError(null);
       const { data, error } = await (supabase
-        .from('comments') as any)
+        .from('task_comments') as any)
         .insert({
           record_type: input.recordType,
           record_id: input.recordId,
@@ -96,7 +101,7 @@ export function useComments() {
     try {
       setError(null);
       const { data, error } = await (supabase
-        .from('comments') as any)
+        .from('task_comments') as any)
         .update({ content: input.content })
         .eq('id', commentId)
         .eq('user_id', user.id)
@@ -123,7 +128,7 @@ export function useComments() {
     try {
       setError(null);
       const { error } = await (supabase
-        .from('comments') as any)
+        .from('task_comments') as any)
         .update({ archived_at: new Date().toISOString() })
         .eq('id', commentId)
         .eq('user_id', user.id);

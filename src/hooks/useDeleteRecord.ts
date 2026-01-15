@@ -24,7 +24,7 @@ export function useDeleteRecord() {
       if (error) throw error;
 
       // Log activity
-      await (supabase.from('activity_logs') as any).insert({
+      await (supabase.from('activity_log') as any).insert({
         workspace_id: workspace.id,
         user_id: user.id,
         record_type: type,
@@ -60,7 +60,7 @@ export function useDeleteRecord() {
 
       // Log activity (optional - might fail if record is gone)
       try {
-        await (supabase.from('activity_logs') as any).insert({
+        await (supabase.from('activity_log') as any).insert({
           workspace_id: workspace.id,
           user_id: user.id,
           record_type: type,

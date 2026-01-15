@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -55,8 +55,9 @@ export function CommentsActivity({ recordType, recordId }: CommentsActivityProps
     }
   };
 
-  const getInitials = (userId: string) => {
-    return userId.slice(0, 2).toUpperCase();
+  const getInitials = (name?: string | null) => {
+    if (!name) return '??';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   return (
@@ -92,11 +93,14 @@ export function CommentsActivity({ recordType, recordId }: CommentsActivityProps
                 {comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback>{getInitials(comment.user_id)}</AvatarFallback>
+                      <AvatarImage src={(comment as any).users?.avatar_url} />
+                      <AvatarFallback>{getInitials((comment as any).users?.full_name || 'User')}</AvatarFallback>
                     </Avatar>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">User {comment.user_id.slice(0, 8)}</span>
+                        <span className="text-sm font-semibold">
+                          {(comment as any).users?.full_name || (comment as any).users?.nickname || `User ${comment.user_id.slice(0, 4)}`}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                         </span>
@@ -123,7 +127,7 @@ export function CommentsActivity({ recordType, recordId }: CommentsActivityProps
           </div>
         </TabsContent>
 
-        <TabsContent value="activity" className="flex-1 p-4 m-0">
+        <TabsContent value="activity" className="flex-1 p-4 m-0 overflow-y-auto">
           {activityLoading ? (
             <div className="text-center text-sm text-muted-foreground py-4">Loading activity...</div>
           ) : activityError ? (
@@ -131,7 +135,7 @@ export function CommentsActivity({ recordType, recordId }: CommentsActivityProps
           ) : activityLogs.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-4">No activity yet</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {activityLogs.map((log) => {
                 const getActionText = () => {
                   const meta = log.metadata as Record<string, unknown> | undefined;
@@ -150,25 +154,17 @@ export function CommentsActivity({ recordType, recordId }: CommentsActivityProps
                   }
                 };
 
-                const getActionColor = () => {
-                  switch (log.action_type) {
-                    case 'created':
-                      return 'bg-green-500';
-                    case 'status_changed':
-                      return 'bg-blue-500';
-                    case 'updated':
-                      return 'bg-yellow-500';
-                    default:
-                      return 'bg-gray-500';
-                  }
-                };
-
                 return (
                   <div key={log.id} className="flex items-start gap-3 text-sm">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 ${getActionColor()}`} />
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={log.users?.avatar_url || ''} />
+                      <AvatarFallback className="text-[10px]">{getInitials(log.users?.full_name || log.users?.nickname || '??')}</AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">User</span>
+                        <span className="font-medium">
+                          {log.users?.full_name || log.users?.nickname || 'User'}
+                        </span>
                         <span className="text-muted-foreground">{getActionText()}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">

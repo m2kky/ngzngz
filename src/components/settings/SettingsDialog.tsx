@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   User, 
-  Settings, 
   Bell, 
   Palette, 
   Globe, 
@@ -20,6 +19,7 @@ import {
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useInvitations } from '@/hooks/useInvitations';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -48,6 +48,7 @@ type SettingsTab = 'account' | 'notifications' | 'appearance' | 'language' | 'wo
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
+  const { profile } = useProfile();
 
   const menuItems = [
     {
@@ -71,7 +72,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[600px] p-0 gap-0 overflow-hidden bg-[#191919] border-[#2c2c2c] text-white">
+      <DialogContent className="max-w-4xl h-[80vh] p-0 gap-0 overflow-hidden bg-[#191919] border-[#2c2c2c] text-white flex flex-col">
         <DialogHeader className="sr-only">
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -79,15 +80,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex h-full">
+        <div className="flex h-full w-full">
           {/* Sidebar */}
           <div className="w-56 bg-[#1e1e1e] border-r border-[#2c2c2c] flex flex-col">
             <div className="p-4 pl-5">
-              <h2 className="text-sm font-semibold text-muted-foreground mb-1">
-                mizot
+              <h2 className="text-sm font-semibold text-white mb-1">
+                {profile?.full_name || profile?.nickname || 'User'}
               </h2>
               <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
-                <span>mizot@example.com</span>
+                <span>{profile?.email}</span>
               </div>
             </div>
 
@@ -127,15 +128,17 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto bg-[#191919]">
-            <div className="max-w-2xl mx-auto py-8 px-6">
-              {activeTab === 'appearance' && <AppearanceSettings />}
-              {activeTab === 'account' && <AccountSettings />}
-              {activeTab === 'notifications' && <NotificationsSettings />}
-              {activeTab === 'language' && <LanguageSettings />}
-              {activeTab === 'workspace' && <WorkspaceGeneralSettings />}
-              {activeTab === 'members' && <MembersSettings />}
-              {activeTab === 'billing' && <BillingSettings />}
+          <div className="flex-1 flex flex-col min-h-0 bg-[#191919] overflow-hidden">
+            <div className="flex-1 overflow-y-auto py-8 px-6">
+              <div className="max-w-2xl mx-auto pb-10">
+                {activeTab === 'appearance' && <AppearanceSettings />}
+                {activeTab === 'account' && <AccountSettings />}
+                {activeTab === 'notifications' && <NotificationsSettings />}
+                {activeTab === 'language' && <LanguageSettings />}
+                {activeTab === 'workspace' && <WorkspaceGeneralSettings />}
+                {activeTab === 'members' && <MembersSettings />}
+                {activeTab === 'billing' && <BillingSettings />}
+              </div>
             </div>
           </div>
         </div>
@@ -253,7 +256,7 @@ function WorkspaceGeneralSettings() {
 
 function MembersSettings() {
   const { members, loading: membersLoading } = useWorkspaceMembers();
-  const { invitations, loading: invitationsLoading, createInvitation, revokeInvitation, fetchInvitations } = useInvitations();
+  const { invitations, createInvitation, revokeInvitation, fetchInvitations } = useInvitations();
   const { workspace } = useWorkspace();
   
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -540,6 +543,80 @@ function AppearanceSettings() {
 }
 
 function AccountSettings() {
+  const { profile, loading, updateProfile, uploadAvatar } = useProfile();
+  const [fullName, setFullName] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [title, setTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setNickname(profile.nickname || '');
+      setTitle(profile.title || '');
+    }
+  }, [profile]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      alert('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      await uploadAvatar(file);
+      alert('تم تحديث الصورة بنجاح! 📸');
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('فشل رفع الصورة. حاول مرة أخرى.');
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await updateProfile({
+        full_name: fullName,
+        nickname: nickname,
+        title: title,
+      });
+      alert('تم حفظ التعديلات بنجاح! ✅');
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('فشل حفظ التعديلات. حاول مرة أخرى.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading && !profile) {
+     return (
+       <div className="flex items-center justify-center h-64">
+         <Loader2 className="w-6 h-6 animate-spin text-primary" />
+       </div>
+     );
+  }
+
+  const initials = (profile?.full_name || profile?.email || '??').split(' ').map(n => n[0]).join('').toUpperCase();
+
   return (
     <div className="space-y-8">
       <div>
@@ -548,31 +625,76 @@ function AccountSettings() {
       </div>
 
       <div className="flex items-center gap-6">
-        <Avatar className="w-20 h-20 border">
-          <AvatarImage src="/placeholder-user.jpg" />
-          <AvatarFallback className="bg-primary/10 text-primary text-xl">MZ</AvatarFallback>
+        <Avatar className="w-20 h-20 border-[#2c2c2c]">
+          <AvatarImage src={profile?.avatar_url || ''} />
+          <AvatarFallback className="bg-primary/10 text-primary text-xl">{initials}</AvatarFallback>
         </Avatar>
         <div className="space-y-2">
-          <Button variant="outline" size="sm">Change Avatar</Button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*"
+            onChange={handleAvatarChange}
+          />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="bg-[#2c2c2c] border-[#3c3c3c]"
+            onClick={handleAvatarClick}
+            disabled={isUploading}
+          >
+            {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {isUploading ? 'Uploading...' : 'Change Avatar'}
+          </Button>
           <div className="text-xs text-muted-foreground">Recommended size 256x256px</div>
         </div>
       </div>
 
       <Separator className="bg-[#2c2c2c]" />
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-md">
         <div className="grid gap-2">
-          <Label htmlFor="name">Display Name</Label>
-          <div className="text-sm text-white font-medium p-2 bg-[#2c2c2c] rounded-md border border-[#3c3c3c]">
-            Mizot
-          </div>
+          <Label htmlFor="fullName">Full Name</Label>
+          <Input 
+            id="fullName" 
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="bg-[#2c2c2c] border-[#3c3c3c] text-white" 
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="nickname">Nickname</Label>
+          <Input 
+            id="nickname" 
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            className="bg-[#2c2c2c] border-[#3c3c3c] text-white" 
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="title">Job Title / Role</Label>
+          <Input 
+            id="title" 
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Product Designer"
+            className="bg-[#2c2c2c] border-[#3c3c3c] text-white" 
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
-          <div className="text-sm text-white font-medium p-2 bg-[#2c2c2c] rounded-md border border-[#3c3c3c]">
-            mizot@example.com
+          <div className="text-sm text-muted-foreground p-2 bg-[#2c2c2c]/50 rounded-md border border-[#3c3c3c] cursor-not-allowed">
+            {profile?.email}
           </div>
           <p className="text-xs text-muted-foreground">Contact support to change email.</p>
+        </div>
+
+        <div className="pt-4">
+          <Button onClick={handleSave} disabled={isSaving} className="bg-primary text-primary-foreground">
+            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Save Changes
+          </Button>
         </div>
       </div>
     </div>

@@ -14,7 +14,9 @@ import {
   Mail,
   Loader2,
   Trash2,
-  Copy
+  Copy,
+  Pencil,
+  X
 } from 'lucide-react';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useInvitations } from '@/hooks/useInvitations';
@@ -84,11 +86,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           {/* Sidebar */}
           <div className="w-56 bg-[#1e1e1e] border-r border-[#2c2c2c] flex flex-col">
             <div className="p-4 pl-5">
-              <h2 className="text-sm font-semibold text-white mb-1">
+              <h2 className="text-sm font-semibold text-white mb-1 truncate">
                 {profile?.full_name || profile?.nickname || 'User'}
               </h2>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
-                <span>{profile?.email}</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/70 truncate">
+                <span className="truncate">{profile?.email}</span>
               </div>
             </div>
 
@@ -547,19 +549,22 @@ function AccountSettings() {
   const [fullName, setFullName] = useState('');
   const [nickname, setNickname] = useState('');
   const [title, setTitle] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync state with profile data whenever profile changes or editing is toggled off
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
       setNickname(profile.nickname || '');
-      setTitle(profile.title || '');
+      setTitle(profile.title || ''); // Assuming 'title' field exists on profile or should be handled if not
     }
   }, [profile]);
 
   const handleAvatarClick = () => {
+    if (!isEditing) return; // Only allow avatar change in edit mode? Or always? Let's restrict to edit mode for consistency.
     fileInputRef.current?.click();
   };
 
@@ -576,13 +581,12 @@ function AccountSettings() {
       setIsUploading(true);
       await uploadAvatar(file);
       alert('تم تحديث الصورة بنجاح! 📸');
-      window.location.reload();
+      // No reload needed, state should update
     } catch (err) {
       console.error(err);
       alert('فشل رفع الصورة. حاول مرة أخرى.');
     } finally {
       setIsUploading(false);
-      // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -598,12 +602,22 @@ function AccountSettings() {
         title: title,
       });
       alert('تم حفظ التعديلات بنجاح! ✅');
-      window.location.reload();
+      setIsEditing(false);
     } catch (err) {
       console.error(err);
       alert('فشل حفظ التعديلات. حاول مرة أخرى.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    // Reset fields to original profile values
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setNickname(profile.nickname || '');
+      setTitle(profile.title || '');
     }
   };
 
@@ -619,9 +633,17 @@ function AccountSettings() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold mb-1">My Profile</h2>
-        <p className="text-sm text-muted-foreground">Manage your personal information.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">My Profile</h2>
+          <p className="text-sm text-muted-foreground">Manage your personal information.</p>
+        </div>
+        {!isEditing && (
+          <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="gap-2">
+            <Pencil className="w-4 h-4" />
+            Edit Profile
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-6">
@@ -636,13 +658,14 @@ function AccountSettings() {
             className="hidden" 
             accept="image/*"
             onChange={handleAvatarChange}
+            disabled={!isEditing}
           />
           <Button 
             variant="outline" 
             size="sm" 
             className="bg-[#2c2c2c] border-[#3c3c3c]"
             onClick={handleAvatarClick}
-            disabled={isUploading}
+            disabled={isUploading || !isEditing}
           >
             {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             {isUploading ? 'Uploading...' : 'Change Avatar'}
@@ -660,7 +683,8 @@ function AccountSettings() {
             id="fullName" 
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="bg-[#2c2c2c] border-[#3c3c3c] text-white" 
+            className="bg-[#2c2c2c] border-[#3c3c3c] text-white disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={!isEditing}
           />
         </div>
         <div className="grid gap-2">
@@ -669,7 +693,8 @@ function AccountSettings() {
             id="nickname" 
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            className="bg-[#2c2c2c] border-[#3c3c3c] text-white" 
+            className="bg-[#2c2c2c] border-[#3c3c3c] text-white disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={!isEditing}
           />
         </div>
         <div className="grid gap-2">
@@ -679,64 +704,29 @@ function AccountSettings() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Product Designer"
-            className="bg-[#2c2c2c] border-[#3c3c3c] text-white" 
+            className="bg-[#2c2c2c] border-[#3c3c3c] text-white disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={!isEditing}
           />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
-          <div className="text-sm text-muted-foreground p-2 bg-[#2c2c2c]/50 rounded-md border border-[#3c3c3c] cursor-not-allowed">
+          <div className="text-sm text-muted-foreground p-2 bg-[#2c2c2c]/50 rounded-md border border-[#3c3c3c] cursor-not-allowed truncate overflow-hidden">
             {profile?.email}
           </div>
           <p className="text-xs text-muted-foreground">Contact support to change email.</p>
         </div>
 
-        <div className="pt-4">
-          <Button onClick={handleSave} disabled={isSaving} className="bg-primary text-primary-foreground">
-            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Save Changes
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NotificationsSettings() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-xl font-semibold mb-1">Notifications</h2>
-        <p className="text-sm text-muted-foreground">Choose what you want to be notified about.</p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-0.5">
-            <Label className="text-base">Task Assignments</Label>
-            <p className="text-sm text-muted-foreground">Receive emails when you are assigned to a task.</p>
+        {isEditing && (
+          <div className="flex gap-3 pt-4">
+            <Button onClick={handleSave} disabled={isSaving} className="bg-primary text-primary-foreground">
+              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+            <Button onClick={handleCancel} variant="ghost" disabled={isSaving}>
+              Cancel
+            </Button>
           </div>
-          <Switch defaultChecked />
-        </div>
-        
-        <Separator className="bg-[#2c2c2c]" />
-        
-        <div className="flex items-start justify-between">
-          <div className="space-y-0.5">
-            <Label className="text-base">Mentions & Comments</Label>
-            <p className="text-sm text-muted-foreground">Receive notifications when someone mentions you.</p>
-          </div>
-          <Switch defaultChecked />
-        </div>
-        
-        <Separator className="bg-[#2c2c2c]" />
-
-        <div className="flex items-start justify-between">
-          <div className="space-y-0.5">
-            <Label className="text-base">Project Updates</Label>
-            <p className="text-sm text-muted-foreground">Weekly digest of project activities.</p>
-          </div>
-          <Switch />
-        </div>
+        )}
       </div>
     </div>
   );

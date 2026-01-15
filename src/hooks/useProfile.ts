@@ -3,7 +3,11 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import type { Database } from '@/types/database.types';
 
-export type UserProfile = Database['public']['Tables']['profiles']['Row'];
+// Updating type definition to use 'users' table instead of 'profiles'
+// Ideally this should be imported from Database types if 'users' is properly defined there
+// But for now we can infer it or use 'any' if types are not perfectly generated yet.
+// Based on previous reads, 'users' is in Database types.
+export type UserProfile = Database['public']['Tables']['users']['Row'];
 
 export function useProfile() {
   const { user } = useAuth();
@@ -20,8 +24,9 @@ export function useProfile() {
     try {
       setLoading(true);
       setError(null);
+      // Changed 'profiles' to 'users'
       const { data, error: fetchError } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -41,8 +46,9 @@ export function useProfile() {
 
     try {
       setLoading(true);
+      // Changed 'profiles' to 'users'
       const { data, error: updateError } = await supabase
-        .from('profiles')
+        .from('users')
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
@@ -86,9 +92,9 @@ export function useProfile() {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // 4. Update profile
+      // 4. Update profile - Changed 'profiles' to 'users'
       const { data, error: updateError } = await supabase
-        .from('profiles')
+        .from('users')
         .update({
           avatar_url: publicUrl,
           updated_at: new Date().toISOString(),

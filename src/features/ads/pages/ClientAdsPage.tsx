@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/lib/supabase";
 import { fetchMetaCampaigns, type NormalizedCampaign } from "@/lib/adapters/meta-adapter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -27,10 +25,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  Loader2, ArrowLeft, Plus, RefreshCw, Settings2, ExternalLink, AlertCircle 
+  Loader2, ArrowLeft, Plus, RefreshCw, Settings2, AlertCircle 
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+
+import { ConnectPlatformDialog } from "../components/ConnectPlatformDialog";
+import { AdsAnalytics } from "../components/AdsAnalytics";
+import { AdsFilters } from "../components/AdsFilters";
 
 // Default visible metrics
 const DEFAULT_METRICS = ['spend', 'results', 'cost_per_result', 'ctr'];
@@ -48,8 +51,6 @@ const AVAILABLE_METRICS = [
   { id: 'clicks', label: 'Link Clicks' },
 ];
 
-import { ConnectPlatformDialog } from "../components/ConnectPlatformDialog";
-
 export function ClientAdsPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
@@ -65,6 +66,13 @@ export function ClientAdsPage() {
   // Settings State
   const [visibleMetrics, setVisibleMetrics] = useState<string[]>(DEFAULT_METRICS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Filters State
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    accountIds: [] as string[]
+  });
 
   useEffect(() => {
     if (clientId && workspace) {
@@ -120,6 +128,25 @@ export function ClientAdsPage() {
     refetchOnWindowFocus: false, // Prevent auto-refetch on focus
     staleTime: 60000, // Keep data fresh for 1 minute
   });
+
+  // Derived Data
+  const uniqueAccounts = useMemo(() => {
+    const map = new Map<string, string>();
+    campaigns.forEach(c => {
+      map.set(c.account_id, c.account_name || c.account_id);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [campaigns]);
+
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(filters.search.toLowerCase());
+      const matchesStatus = filters.status === 'all' || c.status === filters.status;
+      const matchesAccount = filters.accountIds.length === 0 || filters.accountIds.includes(c.account_id);
+      
+      return matchesSearch && matchesStatus && matchesAccount;
+    });
+  }, [campaigns, filters]);
 
   const handleConnect = async (credentials: any) => {
     if (!workspace) return;
@@ -242,65 +269,76 @@ export function ClientAdsPage() {
             </Card>
           ) : (
             <>
-              {/* Controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1 px-3 py-1">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    Live Data
-                  </Badge>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {metaIntegration.credentials.ad_account_ids?.length || 1} Accounts Connected
-                  </span>
-                </div>
-                
-                <div className="flex gap-2">
-                  <ConnectPlatformDialog 
-                    platform="meta" 
-                    onConnect={handleConnect}
-                    trigger={
-                      <Button variant="outline" size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Manage Accounts
-                      </Button>
-                    }
-                  />
+              {/* Analytics Section */}
+              <AdsAnalytics data={filteredCampaigns} />
+
+              {/* Controls & Filters */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1 px-3 py-1">
+                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                      Live Data
+                    </Badge>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {metaIntegration.credentials.ad_account_ids?.length || 1} Accounts Connected
+                    </span>
+                  </div>
                   
-                  <Button variant="outline" size="sm" onClick={() => refetch()} disabled={fetchingData}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${fetchingData ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-                  
-                  <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Settings2 className="h-4 w-4 mr-2" />
-                        Customize View
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Customize Metrics</DialogTitle>
-                        <DialogDescription>Select the columns you want to see in the table.</DialogDescription>
-                      </DialogHeader>
-                      <div className="grid grid-cols-2 gap-4 py-4">
-                        {AVAILABLE_METRICS.map((metric) => (
-                          <div key={metric.id} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={metric.id} 
-                              checked={visibleMetrics.includes(metric.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) handleUpdateMetrics([...visibleMetrics, metric.id]);
-                                else handleUpdateMetrics(visibleMetrics.filter(m => m !== metric.id));
-                              }}
-                            />
-                            <Label htmlFor={metric.id}>{metric.label}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <div className="flex gap-2">
+                    <ConnectPlatformDialog 
+                      platform="meta" 
+                      onConnect={handleConnect}
+                      trigger={
+                        <Button variant="outline" size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Manage Accounts
+                        </Button>
+                      }
+                    />
+                    
+                    <Button variant="outline" size="sm" onClick={() => refetch()} disabled={fetchingData}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${fetchingData ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    
+                    <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Settings2 className="h-4 w-4 mr-2" />
+                          Customize View
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Customize Metrics</DialogTitle>
+                          <DialogDescription>Select the columns you want to see in the table.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid grid-cols-2 gap-4 py-4">
+                          {AVAILABLE_METRICS.map((metric) => (
+                            <div key={metric.id} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={metric.id} 
+                                checked={visibleMetrics.includes(metric.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) handleUpdateMetrics([...visibleMetrics, metric.id]);
+                                  else handleUpdateMetrics(visibleMetrics.filter(m => m !== metric.id));
+                                }}
+                              />
+                              <Label htmlFor={metric.id}>{metric.label}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
+
+                <AdsFilters 
+                  filters={filters} 
+                  onChange={setFilters} 
+                  accounts={uniqueAccounts} 
+                />
               </div>
 
               {/* Data Table */}
@@ -330,19 +368,21 @@ export function ClientAdsPage() {
                         {fetchingData ? (
                           [1,2,3].map(i => (
                             <TableRow key={i}>
-                              <TableCell colSpan={3 + visibleMetrics.length} className="h-16">
+                              <TableCell colSpan={4 + visibleMetrics.length} className="h-16">
                                 <div className="h-4 bg-muted rounded w-full animate-pulse" />
                               </TableCell>
                             </TableRow>
                           ))
-                        ) : campaigns.length === 0 ? (
+                        ) : filteredCampaigns.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={3 + visibleMetrics.length} className="h-32 text-center text-muted-foreground">
-                              No active campaigns found in this account.
+                            <TableCell colSpan={4 + visibleMetrics.length} className="h-32 text-center text-muted-foreground">
+                              {campaigns.length > 0 
+                                ? "No campaigns match your filters." 
+                                : "No active campaigns found in this account."}
                             </TableCell>
                           </TableRow>
                         ) : (
-                          campaigns.map((campaign) => (
+                          filteredCampaigns.map((campaign) => (
                             <TableRow key={campaign.id}>
                               <TableCell className="font-medium">
                                 <div className="flex flex-col">

@@ -25,31 +25,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  Loader2, ArrowLeft, Plus, RefreshCw, Settings2, AlertCircle 
+  Loader2, ArrowLeft, Plus, RefreshCw, Settings2, AlertCircle, LayoutTemplate 
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { ConnectPlatformDialog } from "../components/ConnectPlatformDialog";
 import { AdsAnalytics } from "../components/AdsAnalytics";
 import { AdsFilters } from "../components/AdsFilters";
-
-// Default visible metrics
-const DEFAULT_METRICS = ['spend', 'results', 'cost_per_result', 'ctr'];
-
-const AVAILABLE_METRICS = [
-  { id: 'spend', label: 'Amount Spent' },
-  { id: 'impressions', label: 'Impressions' },
-  { id: 'reach', label: 'Reach' },
-  { id: 'results', label: 'Results' },
-  { id: 'cost_per_result', label: 'Cost per Result' },
-  { id: 'cpm', label: 'CPM (Cost per 1k Impr)' },
-  { id: 'cpc', label: 'CPC (Cost per Click)' },
-  { id: 'ctr', label: 'CTR (Link Click-Through Rate)' },
-  { id: 'frequency', label: 'Frequency' },
-  { id: 'clicks', label: 'Link Clicks' },
-];
+import { COLUMN_PRESETS, AVAILABLE_METRICS } from "../constants/column-presets";
 
 export function ClientAdsPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -64,8 +57,9 @@ export function ClientAdsPage() {
   const [metaIntegration, setMetaIntegration] = useState<any>(null);
 
   // Settings State
-  const [visibleMetrics, setVisibleMetrics] = useState<string[]>(DEFAULT_METRICS);
+  const [visibleMetrics, setVisibleMetrics] = useState<string[]>(COLUMN_PRESETS.PERFORMANCE.columns);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activePreset, setActivePreset] = useState("PERFORMANCE");
 
   // Filters State
   const [filters, setFilters] = useState({
@@ -195,8 +189,26 @@ export function ClientAdsPage() {
     }
   };
 
+  const handlePresetChange = (presetKey: string) => {
+    const preset = COLUMN_PRESETS[presetKey as keyof typeof COLUMN_PRESETS];
+    if (preset) {
+      setVisibleMetrics(preset.columns);
+      setActivePreset(presetKey);
+      
+      // Save logic (optional, if we want to persist the last view)
+      handleUpdateMetrics(preset.columns); 
+    }
+  };
+
   const handleUpdateMetrics = async (newMetrics: string[]) => {
     setVisibleMetrics(newMetrics);
+    
+    // If customized, switch to Custom preset
+    if (activePreset !== 'CUSTOM') {
+      const currentPresetCols = COLUMN_PRESETS[activePreset as keyof typeof COLUMN_PRESETS].columns;
+      const isDifferent = JSON.stringify(newMetrics.sort()) !== JSON.stringify(currentPresetCols.sort());
+      if (isDifferent) setActivePreset('CUSTOM');
+    }
     
     if (metaIntegration) {
       // Save to DB
@@ -302,35 +314,32 @@ export function ClientAdsPage() {
                       Refresh
                     </Button>
                     
-                    <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                      <DialogTrigger asChild>
+                    {/* Columns Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
-                          <Settings2 className="h-4 w-4 mr-2" />
-                          Customize View
+                          <LayoutTemplate className="h-4 w-4 mr-2" />
+                          Columns: {COLUMN_PRESETS[activePreset as keyof typeof COLUMN_PRESETS]?.label || 'Custom'}
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Customize Metrics</DialogTitle>
-                          <DialogDescription>Select the columns you want to see in the table.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid grid-cols-2 gap-4 py-4">
-                          {AVAILABLE_METRICS.map((metric) => (
-                            <div key={metric.id} className="flex items-center space-x-2">
-                              <Checkbox 
-                                id={metric.id} 
-                                checked={visibleMetrics.includes(metric.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) handleUpdateMetrics([...visibleMetrics, metric.id]);
-                                  else handleUpdateMetrics(visibleMetrics.filter(m => m !== metric.id));
-                                }}
-                              />
-                              <Label htmlFor={metric.id}>{metric.label}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>View Presets</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {Object.entries(COLUMN_PRESETS).map(([key, preset]) => {
+                          if (key === 'CUSTOM') return null;
+                          return (
+                            <DropdownMenuItem key={key} onClick={() => handlePresetChange(key)}>
+                              {preset.label}
+                              {activePreset === key && <Badge variant="secondary" className="ml-auto text-[10px]">Active</Badge>}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
+                          <Settings2 className="mr-2 h-4 w-4" /> Customize Columns...
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
@@ -339,6 +348,31 @@ export function ClientAdsPage() {
                   onChange={setFilters} 
                   accounts={uniqueAccounts} 
                 />
+
+                {/* Customization Dialog (Hidden, controlled by state) */}
+                <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Customize Columns</DialogTitle>
+                      <DialogDescription>Select the metrics you want to display.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4">
+                      {AVAILABLE_METRICS.map((metric) => (
+                        <div key={metric.id} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={metric.id} 
+                            checked={visibleMetrics.includes(metric.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) handleUpdateMetrics([...visibleMetrics, metric.id]);
+                              else handleUpdateMetrics(visibleMetrics.filter(m => m !== metric.id));
+                            }}
+                          />
+                          <Label htmlFor={metric.id}>{metric.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {/* Data Table */}

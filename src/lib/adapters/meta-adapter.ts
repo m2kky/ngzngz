@@ -33,9 +33,9 @@ export interface NormalizedCampaign {
   name: string;
   status: string;
   objective: string;
-  account_id: string; // Add account_id
-  account_name?: string; // Add account_name
-  currency: string; // Add currency
+  account_id: string;
+  account_name?: string;
+  currency: string;
   spend: number;
   impressions: number;
   clicks: number;
@@ -46,8 +46,22 @@ export interface NormalizedCampaign {
   ctr: number;
   results: number;
   cost_per_result: number;
-  result_type: string; // 'Lead', 'Traffic', 'Awareness', etc.
-  raw: any; // For extra metrics if needed
+  result_type: string;
+  
+  // Engagement Metrics
+  post_reactions?: number;
+  post_comments?: number;
+  post_shares?: number;
+  link_clicks?: number;
+  
+  // Video Metrics
+  video_plays?: number;
+  video_p25?: number;
+  video_p50?: number;
+  video_p100?: number;
+  video_avg_time?: number;
+
+  raw: any;
 }
 
 function getResult(objective: string, actions: any[] = [], insights: any) {
@@ -81,7 +95,10 @@ export async function fetchMetaCampaigns(credentials: MetaCredentials): Promise<
   const accountFields = 'currency';
   const campaignFields = [
     'id', 'name', 'status', 'objective',
-    'insights.date_preset(maximum){spend,impressions,clicks,reach,frequency,cpc,cpm,ctr,inline_link_clicks,actions,cost_per_action_type}'
+    'insights.date_preset(maximum){' +
+    'spend,impressions,clicks,reach,frequency,cpc,cpm,ctr,inline_link_clicks,actions,cost_per_action_type,' +
+    'video_p25_watched_actions,video_p50_watched_actions,video_p100_watched_actions,video_avg_time_watched_actions' +
+    '}'
   ].join(',');
 
   try {
@@ -115,9 +132,20 @@ export async function fetchMetaCampaigns(credentials: MetaCredentials): Promise<
       return (data.data || []).map((campaign: MetaCampaign) => {
         const insights = campaign.insights?.data?.[0] || {};
         const actions = insights.actions || [];
+        const videoP25 = insights.video_p25_watched_actions || [];
+        const videoP50 = insights.video_p50_watched_actions || [];
+        const videoP100 = insights.video_p100_watched_actions || [];
+        const videoAvgTime = insights.video_avg_time_watched_actions || [];
         
         const { value: resultValue, type: resultType } = getResult(campaign.objective, actions, insights);
         
+        // Helper to sum action values
+        const sumActions = (arr: any[], type?: string) => {
+          if (!arr) return 0;
+          if (type) return Number(arr.find(a => a.action_type === type)?.value || 0);
+          return arr.reduce((acc, curr) => acc + Number(curr.value), 0);
+        };
+
         const spend = Number(insights.spend || 0);
         const costPerResult = resultValue > 0 ? spend / resultValue : 0;
 
@@ -144,6 +172,20 @@ export async function fetchMetaCampaigns(credentials: MetaCredentials): Promise<
           results: resultValue,
           cost_per_result: costPerResult,
           result_type: resultType,
+          
+          // Engagement
+          post_reactions: sumActions(actions, 'post_reaction'),
+          post_comments: sumActions(actions, 'comment'),
+          post_shares: sumActions(actions, 'post'),
+          link_clicks: Number(insights.inline_link_clicks || 0),
+
+          // Video
+          video_plays: sumActions(actions, 'video_view'),
+          video_p25: sumActions(videoP25),
+          video_p50: sumActions(videoP50),
+          video_p100: sumActions(videoP100),
+          video_avg_time: sumActions(videoAvgTime),
+
           raw: insights
         };
       });

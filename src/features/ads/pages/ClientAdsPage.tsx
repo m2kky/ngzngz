@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -47,24 +48,19 @@ const AVAILABLE_METRICS = [
   { id: 'clicks', label: 'Link Clicks' },
 ];
 
+import { ConnectPlatformDialog } from "../components/ConnectPlatformDialog";
+
 export function ClientAdsPage() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { workspace } = useWorkspace();
+  const queryClient = useQueryClient();
   
   const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(true);
   
   // Meta Integration State
   const [metaIntegration, setMetaIntegration] = useState<any>(null);
-  const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const [connectForm, setConnectForm] = useState({ access_token: "", ad_account_id: "" });
-  const [connecting, setConnecting] = useState(false);
-
-  // Data State
-  const [campaigns, setCampaigns] = useState<NormalizedCampaign[]>([]);
-  const [fetchingData, setFetchingData] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Settings State
   const [visibleMetrics, setVisibleMetrics] = useState<string[]>(DEFAULT_METRICS);
@@ -75,12 +71,6 @@ export function ClientAdsPage() {
       loadClientAndIntegrations();
     }
   }, [clientId, workspace]);
-
-  useEffect(() => {
-    if (metaIntegration?.credentials) {
-      loadLiveData();
-    }
-  }, [metaIntegration]);
 
   const loadClientAndIntegrations = async () => {
     try {
@@ -117,57 +107,64 @@ export function ClientAdsPage() {
     }
   };
 
-  const handleConnect = async () => {
-    if (!connectForm.access_token || !connectForm.ad_account_id || !workspace) return;
+  // Data Query
+  const { 
+    data: campaigns = [], 
+    isLoading: fetchingData, 
+    error: fetchError,
+    refetch 
+  } = useQuery({
+    queryKey: ['meta-campaigns', metaIntegration?.id],
+    queryFn: () => fetchMetaCampaigns(metaIntegration.credentials),
+    enabled: !!metaIntegration?.credentials,
+    refetchOnWindowFocus: false, // Prevent auto-refetch on focus
+    staleTime: 60000, // Keep data fresh for 1 minute
+  });
+
+  const handleConnect = async (credentials: any) => {
+    if (!workspace) return;
     
     try {
-      setConnecting(true);
+      let result;
       
-      // Basic validation by trying to fetch
-      try {
-        await fetchMetaCampaigns(connectForm);
-      } catch (e) {
-        throw new Error("Invalid credentials or permissions. Please check your token.");
+      if (metaIntegration) {
+        // Update existing integration
+        result = await supabase
+          .from('ad_integrations')
+          .update({
+            credentials,
+            settings: { ...metaIntegration.settings, visibleMetrics: DEFAULT_METRICS },
+            status: 'active'
+          })
+          .eq('id', metaIntegration.id)
+          .select()
+          .single();
+      } else {
+        // Insert new integration
+        result = await supabase
+          .from('ad_integrations')
+          .insert({
+            workspace_id: workspace.id,
+            client_id: clientId,
+            platform: 'meta',
+            credentials,
+            settings: { visibleMetrics: DEFAULT_METRICS },
+            status: 'active'
+          })
+          .select()
+          .single();
       }
 
-      const { data, error } = await supabase
-        .from('ad_integrations')
-        .insert({
-          workspace_id: workspace.id,
-          client_id: clientId,
-          platform: 'meta',
-          credentials: connectForm,
-          settings: { visibleMetrics: DEFAULT_METRICS },
-          status: 'active'
-        })
-        .select()
-        .single();
+      if (result.error) throw result.error;
 
-      if (error) throw error;
-
-      setMetaIntegration(data);
-      setIsConnectOpen(false);
-      toast.success("Meta Ads connected successfully!");
+      setMetaIntegration(result.data);
+      toast.success(metaIntegration ? "Connection updated successfully!" : "Meta Ads connected successfully!");
+      
+      // Refetch data immediately with new accounts
+      queryClient.invalidateQueries({ queryKey: ['meta-campaigns'] });
+      
     } catch (err: any) {
       toast.error(err.message || "Failed to connect");
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  const loadLiveData = async () => {
-    if (!metaIntegration) return;
-    
-    try {
-      setFetchingData(true);
-      setFetchError(null);
-      const data = await fetchMetaCampaigns(metaIntegration.credentials);
-      setCampaigns(data);
-    } catch (err: any) {
-      console.error(err);
-      setFetchError(err.message);
-    } finally {
-      setFetchingData(false);
     }
   };
 
@@ -208,44 +205,10 @@ export function ClientAdsPage() {
         </div>
         
         {!metaIntegration && (
-          <Dialog open={isConnectOpen} onOpenChange={setIsConnectOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Connect Platform
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Connect Meta Ads</DialogTitle>
-                <DialogDescription>Enter your Graph API Access Token and Ad Account ID.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Ad Account ID</Label>
-                  <Input 
-                    placeholder="act_123456789" 
-                    value={connectForm.ad_account_id}
-                    onChange={e => setConnectForm({...connectForm, ad_account_id: e.target.value})}
-                  />
-                  <p className="text-xs text-muted-foreground">Found in Business Manager URL or Settings.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Access Token</Label>
-                  <Input 
-                    type="password"
-                    placeholder="EAAG..." 
-                    value={connectForm.access_token}
-                    onChange={e => setConnectForm({...connectForm, access_token: e.target.value})}
-                  />
-                  <p className="text-xs text-muted-foreground">System User Token or Long-lived User Token required.</p>
-                </div>
-                <Button className="w-full" onClick={handleConnect} disabled={connecting}>
-                  {connecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Connect Account
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <ConnectPlatformDialog 
+            platform="meta" 
+            onConnect={handleConnect} 
+          />
         )}
       </div>
 
@@ -270,7 +233,11 @@ export function ClientAdsPage() {
                 <p className="text-muted-foreground max-w-sm mb-6">
                   Connect your ad account to view live performance data, spend, and results directly in this dashboard.
                 </p>
-                <Button onClick={() => setIsConnectOpen(true)}>Connect Now</Button>
+                <ConnectPlatformDialog 
+                  platform="meta" 
+                  onConnect={handleConnect}
+                  trigger={<Button>Connect Now</Button>}
+                />
               </CardContent>
             </Card>
           ) : (
@@ -283,12 +250,23 @@ export function ClientAdsPage() {
                     Live Data
                   </Badge>
                   <span className="text-xs text-muted-foreground ml-2">
-                    Account: {metaIntegration.credentials.ad_account_id}
+                    {metaIntegration.credentials.ad_account_ids?.length || 1} Accounts Connected
                   </span>
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={loadLiveData} disabled={fetchingData}>
+                  <ConnectPlatformDialog 
+                    platform="meta" 
+                    onConnect={handleConnect}
+                    trigger={
+                      <Button variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Manage Accounts
+                      </Button>
+                    }
+                  />
+                  
+                  <Button variant="outline" size="sm" onClick={() => refetch()} disabled={fetchingData}>
                     <RefreshCw className={`h-4 w-4 mr-2 ${fetchingData ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
@@ -332,13 +310,14 @@ export function ClientAdsPage() {
                     <div className="p-8 text-center text-red-500 flex flex-col items-center">
                       <AlertCircle className="h-8 w-8 mb-2" />
                       <p>Failed to load data from Meta</p>
-                      <p className="text-sm text-muted-foreground mt-1">{fetchError}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{(fetchError as Error).message || "Unknown error"}</p>
                     </div>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[300px]">Campaign Name</TableHead>
+                          <TableHead>Account</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Objective</TableHead>
                           {visibleMetrics.map(mid => {
@@ -371,6 +350,9 @@ export function ClientAdsPage() {
                                   <span className="text-[10px] text-muted-foreground">{campaign.id}</span>
                                 </div>
                               </TableCell>
+                              <TableCell className="text-xs">
+                                {campaign.account_name || campaign.account_id}
+                              </TableCell>
                               <TableCell>
                                 <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px]">
                                   {campaign.status}
@@ -382,7 +364,10 @@ export function ClientAdsPage() {
                                 
                                 // Formatting
                                 if (mid === 'spend' || mid === 'cost_per_result' || mid === 'cpc' || mid === 'cpm') {
-                                  value = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+                                  value = new Intl.NumberFormat('en-US', { 
+                                    style: 'currency', 
+                                    currency: campaign.currency || 'USD' 
+                                  }).format(value);
                                 } else if (mid === 'ctr') {
                                   value = `${value.toFixed(2)}%`;
                                 } else if (mid === 'frequency') {

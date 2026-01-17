@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { getErrorMessage } from '@/lib/errors';
 
 export type ActivityLog = {
   id: string;
@@ -9,7 +10,7 @@ export type ActivityLog = {
   record_id: string;
   user_id: string;
   action_type: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
   created_at: string;
   users?: {
     full_name: string | null;
@@ -22,7 +23,7 @@ export type CreateActivityLogInput = {
   recordType: string;
   recordId: string;
   actionType: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 };
 
 export function useActivity() {
@@ -43,19 +44,21 @@ export function useActivity() {
       }
       
       const { data, error } = await supabase
-        .from('activity_log')
+        .from('activity_logs')
         .select('*, users(full_name, nickname, avatar_url)')
         .eq('record_type', recordType)
         .eq('record_id', recordId)
         .eq('workspace_id', workspace.id)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit)
+        .returns<ActivityLog[]>();
 
       if (error) throw error;
-      setActivityLogs(data as ActivityLog[]);
-    } catch (err: any) {
-      console.error('Error fetching activity logs:', err);
-      setError(err.message);
+      setActivityLogs((data ?? []) as ActivityLog[]);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error('Error fetching activity logs:', message);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -67,8 +70,8 @@ export function useActivity() {
 
     try {
       setError(null);
-      const { data, error } = await (supabase
-        .from('activity_log') as any)
+      const { data, error } = await supabase
+        .from('activity_logs')
         .insert({
           record_type: input.recordType,
           record_id: input.recordId,
@@ -77,14 +80,19 @@ export function useActivity() {
           action_type: input.actionType,
           metadata: input.metadata || {},
         })
-        .select()
+        .select('*, users(full_name, nickname, avatar_url)')
+        .returns<ActivityLog>()
         .single();
 
       if (error) throw error;
+      
+      // Update local state
+      setActivityLogs(prev => [data as ActivityLog, ...prev]);
       return data as ActivityLog;
-    } catch (err: any) {
-      console.error('Error adding activity log:', err);
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error('Error adding activity log:', message);
+      setError(message);
       throw err;
     }
   }, [user, workspace]);

@@ -1,30 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import type { Database } from '@/types/database.types';
 
-// Temporary until types are generated
-export type Client = {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url: string | null;
-  status: 'active' | 'inactive' | 'archived';
-  primary_contact_name: string | null;
-  primary_contact_email: string | null;
-  primary_contact_phone: string | null;
-  website: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export type CreateClientInput = {
-  name: string;
-  slug: string;
-  status?: 'active' | 'inactive';
-  primary_contact_name?: string;
-  primary_contact_email?: string;
-  website?: string;
-};
+export type Client = Database['public']['Tables']['clients']['Row'];
+export type CreateClientInput = Database['public']['Tables']['clients']['Insert'];
 
 export function useClients() {
   const { workspace } = useWorkspace();
@@ -38,7 +18,7 @@ export function useClients() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('clients' as any)
+        .from('clients')
         .select('*')
         .eq('workspace_id', workspace.id)
         .order('name');
@@ -62,7 +42,7 @@ export function useClients() {
 
     try {
       const { data, error } = await supabase
-        .from('clients' as any)
+        .from('clients')
         .insert({
           ...input,
           workspace_id: workspace.id,

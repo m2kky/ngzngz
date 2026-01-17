@@ -90,51 +90,6 @@ export const TASK_TEMPLATES = [
         },
     },
     {
-        id: "meeting-notes",
-        name: "Meeting Notes",
-        icon: "📅",
-        title: "Meeting: [Topic] - [Date]",
-        content: {
-            type: "doc",
-            content: [
-                {
-                    type: "heading",
-                    attrs: { level: 2 },
-                    content: [{ type: "text", text: "Attendees 👥" }],
-                },
-                {
-                    type: "taskList",
-                    content: [
-                        { type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [{ type: "text", text: "@Person1" }] }] },
-                        { type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [{ type: "text", text: "@Person2" }] }] },
-                    ],
-                },
-                {
-                    type: "heading",
-                    attrs: { level: 2 },
-                    content: [{ type: "text", text: "Agenda 📋" }],
-                },
-                {
-                    type: "bulletList",
-                    content: [
-                        { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Topic 1" }] }] },
-                    ],
-                },
-                {
-                    type: "heading",
-                    attrs: { level: 2 },
-                    content: [{ type: "text", text: "Action Items ✅" }],
-                },
-                {
-                    type: "taskList",
-                    content: [
-                        { type: "taskItem", attrs: { checked: false }, content: [{ type: "paragraph", content: [{ type: "text", text: "Action 1" }] }] },
-                    ],
-                },
-            ],
-        },
-    },
-    {
         id: "ugc-brief",
         name: "UGC Brief",
         icon: "🎥",

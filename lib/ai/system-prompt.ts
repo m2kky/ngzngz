@@ -12,7 +12,6 @@ export function buildSystemPrompt(context: any, user: any): string {
 
   const projectCount = context?.projects?.length || 0
   const taskCount = context?.tasks?.length || 0
-  const meetingCount = context?.meetings?.length || 0
 
   // تنسيق الذاكرة
   const recentMemories = context?.recentMemories || []
@@ -41,7 +40,6 @@ ${memoriesSection}
 ### Workspace Statistics
 - **المشاريع**: ${projectCount} مشروع نشط
 - **المهام**: ${taskCount} مهمة في النظام
-- **الاجتماعات**: ${meetingCount} اجتماع قادم
 
 ### Platform Knowledge
 أنت تفهم أدوات Ninja Gen Z الداخلية:
@@ -57,7 +55,6 @@ ${memoriesSection}
 - **update_task_status**: تحديث حالة المهمة
 - **delete_task**: حذف مهمة
 - **get_tasks_by_project**: جلب مهام المشروع
-- **create_meeting**: جدولة اجتماع جديد
 - **get_team_leaderboard**: عرض ترتيب الفريق
 - **analyze_ads_performance**: تحليل أداء الإعلانات
 - **get_project_progress**: عرض تقدم المشروع
@@ -96,7 +93,6 @@ ${memoriesSection}
 export function formatContextForPrompt(context: any): string {
   const projects = context?.projects || []
   const tasks = context?.tasks || []
-  const meetings = context?.meetings || []
 
   let formatted = '\n### Current Workspace Data\n'
 
@@ -114,13 +110,6 @@ export function formatContextForPrompt(context: any): string {
     })
   }
 
-  if (meetings.length > 0) {
-    formatted += '\n**Upcoming Meetings:**\n'
-    meetings.slice(0, 3).forEach((m: any) => {
-      formatted += `- ${m.title} (${new Date(m.scheduled_at).toLocaleString('ar-EG')})\n`
-    })
-  }
-
   return formatted
 }
 
@@ -134,11 +123,6 @@ export function addSpecialInstructions(context: any): string {
   // إذا كان هناك مهام كثيرة
   if (context?.tasks?.length > 20) {
     instructions += '\n⚠️ تنبيه: هناك الكثير من المهام. اقترح على المستخدم تنظيمها أو تفويضها.'
-  }
-
-  // إذا كان هناك اجتماعات قريبة
-  if (context?.meetings?.length > 5) {
-    instructions += '\n📅 تنبيه: هناك عدة اجتماعات قادمة. ساعد المستخدم على إدارتها.'
   }
 
   // إذا كان المستخدم جديداً (مستوى منخفض)

@@ -5,6 +5,7 @@ import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { ClientsPage } from "@/features/clients/pages/ClientsPage";
 import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { TasksPage } from "@/features/tasks/pages/TasksPage";
+import { MeetingsPage } from "@/features/meetings/pages/MeetingsPage";
 import { RecordPage } from "@/components/records/RecordPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
@@ -59,6 +60,7 @@ function App() {
             <Route path="/clients" element={<ClientsPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/tasks/:taskId" element={<RecordPage />} />
           </Route>
         </Routes>

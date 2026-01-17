@@ -331,8 +331,9 @@ export default function TasksPage() {
                     <div className="h-6 w-px bg-white/10" />
                     <ViewSelector
                         currentView={currentView}
-                        onViewChange={handleViewChange}
+                        onViewChange={setCurrentView}
                         defaultViewType="KANBAN"
+                        entityType="TASK"
                     />
                     <SortControl sortConfig={sortConfig} onSortChange={setSortConfig} />
                 </div>

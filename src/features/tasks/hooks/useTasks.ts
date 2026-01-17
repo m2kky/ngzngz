@@ -15,8 +15,8 @@ export function useTasks() {
 
     try {
       setLoading(true);
-      const { data, error } = await (supabase
-        .from('tasks') as any)
+      const { data, error } = await supabase
+        .from('tasks')
         .select('*')
         .eq('workspace_id', workspace.id)
         .is('archived_at', null)
@@ -40,8 +40,8 @@ export function useTasks() {
     if (!workspace) throw new Error('No workspace selected');
 
     try {
-      const { data, error } = await (supabase
-        .from('tasks') as any)
+      const { data, error } = await supabase
+        .from('tasks')
         .insert({
           ...input,
           workspace_id: workspace.id,
@@ -56,7 +56,7 @@ export function useTasks() {
       // Log activity for task creation
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await (supabase.from('activity_log') as any).insert({
+        await supabase.from('activity_logs').insert({
           workspace_id: workspace.id,
           user_id: user.id,
           record_type: 'task',
@@ -84,8 +84,8 @@ export function useTasks() {
         t.id === taskId ? { ...t, ...updates } : t
       ));
 
-      const { error } = await (supabase
-        .from('tasks') as any)
+      const { error } = await supabase
+        .from('tasks')
         .update({
           ...updates,
           updated_at: new Date().toISOString(),

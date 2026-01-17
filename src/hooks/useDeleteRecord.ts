@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import type { RecordType } from '@/types/record';
+import type { Database } from '@/types/database.types';
 
 export function useDeleteRecord() {
   const { user } = useAuth();
@@ -14,17 +15,17 @@ export function useDeleteRecord() {
     
     setDeleting(true);
     try {
-      const table = type === 'task' ? 'tasks' : type === 'project' ? 'projects' : 'clients';
+      const table = type === 'task' ? 'tasks' as const : type === 'project' ? 'projects' as const : 'clients' as const;
       
-      const { error } = await (supabase
-        .from(table) as any)
+      const { error } = await supabase
+        .from(table)
         .update({ archived_at: new Date().toISOString() })
         .eq('id', id);
 
       if (error) throw error;
 
       // Log activity
-      await (supabase.from('activity_log') as any).insert({
+      await supabase.from('activity_logs').insert({
         workspace_id: workspace.id,
         user_id: user.id,
         record_type: type,
@@ -34,9 +35,10 @@ export function useDeleteRecord() {
       });
 
       return true;
-    } catch (error) {
-      console.error('Error archiving record:', error);
-      throw error;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error archiving record:', message);
+      throw err;
     } finally {
       setDeleting(false);
     }
@@ -47,12 +49,12 @@ export function useDeleteRecord() {
     
     setDeleting(true);
     try {
-      const table = type === 'task' ? 'tasks' : type === 'project' ? 'projects' : 'clients';
+      const table = type === 'task' ? 'tasks' as const : type === 'project' ? 'projects' as const : 'clients' as const;
       
       // For now, we do a hard delete
       // In production, you might want to do soft delete
-      const { error } = await (supabase
-        .from(table) as any)
+      const { error } = await supabase
+        .from(table)
         .delete()
         .eq('id', id);
 
@@ -60,7 +62,7 @@ export function useDeleteRecord() {
 
       // Log activity (optional - might fail if record is gone)
       try {
-        await (supabase.from('activity_log') as any).insert({
+        await supabase.from('activity_logs').insert({
           workspace_id: workspace.id,
           user_id: user.id,
           record_type: type,
@@ -73,9 +75,10 @@ export function useDeleteRecord() {
       }
 
       return true;
-    } catch (error) {
-      console.error('Error deleting record:', error);
-      throw error;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error deleting record:', message);
+      throw err;
     } finally {
       setDeleting(false);
     }

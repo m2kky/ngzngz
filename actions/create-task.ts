@@ -3,6 +3,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { Database } from "@/types/database"
+import { getErrorMessage } from "@/lib/errors"
 
 export async function createTask(task: { title: string, assignee: string, deadline: string, workspace_id: string }) {
     const cookieStore = await cookies()
@@ -30,29 +31,34 @@ export async function createTask(task: { title: string, assignee: string, deadli
         }
     )
 
-    // 1. Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Unauthorized")
+    try {
+        // 1. Get current user
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error("Unauthorized")
 
-    // 2. Insert Task
-    const { data, error } = await supabase
-        .from('tasks')
-        .insert({
-            title: task.title,
-            workspace_id: task.workspace_id,
-            status: 'DRAFTING', // Default status
-            priority: 'MEDIUM',
-            created_by: user.id,
-            description: `Auto-generated from War Room Chat. Assignee: ${task.assignee}, Deadline: ${task.deadline}`,
-            // In a real app, we would resolve assignee name to a user_id here
-        })
-        .select()
-        .single()
+        // 2. Insert Task
+        const { data, error } = await supabase
+            .from('tasks')
+            .insert({
+                title: task.title,
+                workspace_id: task.workspace_id,
+                status: 'DRAFTING',
+                priority: 'MEDIUM',
+                created_by: user.id,
+                description: `Auto-generated from War Room Chat. Assignee: ${task.assignee}, Deadline: ${task.deadline}`,
+            })
+            .select()
+            .single()
 
-    if (error) {
-        console.error("Create Task Error:", error)
-        throw new Error("Failed to create task")
+        if (error) {
+            console.error("Create Task Error:", getErrorMessage(error))
+            throw new Error("Failed to create task")
+        }
+
+        return data
+    } catch (err: unknown) {
+        const message = getErrorMessage(err)
+        console.error("Create Task Error:", message)
+        throw new Error(message || "Failed to create task")
     }
-
-    return data
 }

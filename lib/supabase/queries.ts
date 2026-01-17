@@ -11,8 +11,6 @@ export interface WorkspaceContext {
   projects: any[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tasks: any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  meetings: any[]
   userStats: {
     xp_total: number
     xp_weekly: number
@@ -55,10 +53,9 @@ export async function getWorkspaceContext(
       .single()
 
     // 3. جيب كل البيانات بالتوازي
-    const [projects, tasks, meetings, userStats, leaderboard] = await Promise.all([
+    const [projects, tasks, userStats, leaderboard] = await Promise.all([
       getProjects(workspaceId, supabase),
       getTasks(workspaceId, supabase, 10),
-      getUpcomingMeetings(workspaceId, supabase),
       getUserStats(userId, supabase),
       getTeamLeaderboard(workspaceId, supabase),
     ])
@@ -68,7 +65,6 @@ export async function getWorkspaceContext(
       workspace_name: workspace?.name || 'Unknown',
       projects,
       tasks,
-      meetings,
       userStats,
       teamLeaderboard: leaderboard,
     }
@@ -122,32 +118,6 @@ export async function getTasks(
     return data || []
   } catch (error) {
     console.error('Error fetching tasks:', error)
-    return []
-  }
-}
-
-/**
- * جيب الاجتماعات القادمة
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getUpcomingMeetings(
-  workspaceId: string,
-  supabase: SupabaseClient<any>
-) {
-  try {
-    const now = new Date().toISOString()
-    const { data, error } = await supabase
-      .from('meetings')
-      .select('id, title, scheduled_at, link, status')
-      .eq('workspace_id', workspaceId)
-      .gt('scheduled_at', now)
-      .order('scheduled_at', { ascending: true })
-      .limit(5)
-
-    if (error) throw error
-    return data || []
-  } catch (error) {
-    console.error('Error fetching meetings:', error)
     return []
   }
 }

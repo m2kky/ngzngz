@@ -45,7 +45,7 @@ export function useOnboarding() {
       const baseSlug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
       // Note: Using type assertion due to schema mismatch between code and database types
-      const workspaceData = {
+      const workspaceData: WorkspaceInsert = {
         name: data.name,
         slug,
         visibility: data.visibility || 'private',
@@ -58,8 +58,9 @@ export function useOnboarding() {
 
       const { data: workspace, error: workspaceError } = await supabase
         .from('workspaces')
-        .insert(workspaceData as any)
+        .insert(workspaceData)
         .select()
+        .returns<Database['public']['Tables']['workspaces']['Row']>()
         .single();
 
       if (workspaceError) throw workspaceError;
@@ -98,8 +99,8 @@ export function useOnboarding() {
       if (memberError) throw memberError;
 
       return { workspace, error: null };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create workspace';
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err) || 'Failed to create workspace';
       setError(errorMessage);
       return { workspace: null, error: errorMessage };
     } finally {
@@ -131,8 +132,8 @@ export function useOnboarding() {
       if (clientError) throw clientError;
 
       return { client, error: null };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create client';
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err) || 'Failed to create client';
       setError(errorMessage);
       return { client: null, error: errorMessage };
     } finally {
@@ -161,8 +162,8 @@ export function useOnboarding() {
       if (projectError) throw projectError;
 
       return { project, error: null };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create project';
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err) || 'Failed to create project';
       setError(errorMessage);
       return { project: null, error: errorMessage };
     } finally {
@@ -176,7 +177,7 @@ export function useOnboarding() {
 
     try {
       // Note: Using simplified fields due to schema differences
-      const taskData = {
+      const taskData: TaskInsert = {
         workspace_id: workspaceId,
         title: data.title,
         project_id: data.project_id || null,
@@ -185,15 +186,16 @@ export function useOnboarding() {
 
       const { data: task, error: taskError } = await supabase
         .from('tasks')
-        .insert(taskData as any)
+        .insert(taskData)
         .select()
+        .returns<Database['public']['Tables']['tasks']['Row']>()
         .single();
 
       if (taskError) throw taskError;
 
       return { task, error: null };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create task';
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err) || 'Failed to create task';
       setError(errorMessage);
       return { task: null, error: errorMessage };
     } finally {
@@ -323,8 +325,8 @@ export function useOnboarding() {
       // if (requestError) throw requestError;
       // Feature disabled: join requests not supported yet
       return { success: false, error: 'This workspace requires an invitation to join. Please contact the workspace admin.', requiresApproval: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to join workspace';
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err) || 'Failed to join workspace';
       setError(errorMessage);
       return { success: false, error: errorMessage, requiresApproval: false };
     } finally {

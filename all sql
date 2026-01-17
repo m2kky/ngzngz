@@ -1,0 +1,251 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.activity_log (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid,
+  record_type text NOT NULL,
+  record_id uuid NOT NULL,
+  user_id uuid,
+  action_type text NOT NULL,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT activity_log_pkey PRIMARY KEY (id),
+  CONSTRAINT activity_log_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT activity_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.activity_logs (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  user_id uuid,
+  record_type text NOT NULL,
+  record_id uuid NOT NULL,
+  action_type text NOT NULL,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT activity_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT activity_logs_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT activity_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.clients (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  name text NOT NULL,
+  slug text NOT NULL,
+  logo_url text,
+  status text DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text, 'archived'::text])),
+  primary_contact_name text,
+  primary_contact_email text,
+  primary_contact_phone text,
+  website text,
+  social_links jsonb DEFAULT '{}'::jsonb,
+  owner_id uuid,
+  tags ARRAY DEFAULT '{}'::text[],
+  notes_doc jsonb DEFAULT '{}'::jsonb,
+  custom_properties jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT clients_pkey PRIMARY KEY (id),
+  CONSTRAINT clients_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT clients_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.comments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  record_type text NOT NULL,
+  record_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  content text NOT NULL,
+  mentioned_user_ids ARRAY DEFAULT '{}'::uuid[],
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  archived_at timestamp with time zone,
+  CONSTRAINT comments_pkey PRIMARY KEY (id),
+  CONSTRAINT comments_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.invitations (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  email text NOT NULL,
+  role text NOT NULL DEFAULT 'member'::text CHECK (role = ANY (ARRAY['owner'::text, 'admin'::text, 'member'::text, 'guest'::text])),
+  token text NOT NULL DEFAULT (uuid_generate_v4())::text UNIQUE,
+  status text NOT NULL DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'accepted'::text])),
+  expires_at timestamp with time zone DEFAULT (now() + '7 days'::interval),
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT invitations_pkey PRIMARY KEY (id),
+  CONSTRAINT invitations_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT invitations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.invites (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  email text,
+  token text NOT NULL UNIQUE,
+  role USER-DEFINED NOT NULL DEFAULT 'guest'::user_role,
+  access_scope USER-DEFINED NOT NULL DEFAULT 'workspace'::access_scope,
+  allowed_client_ids ARRAY DEFAULT '{}'::uuid[],
+  expires_at timestamp with time zone,
+  used_at timestamp with time zone,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT invites_pkey PRIMARY KEY (id),
+  CONSTRAINT invites_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT invites_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.projects (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  client_id uuid,
+  name text NOT NULL,
+  description text,
+  status text DEFAULT 'active'::text CHECK (status = ANY (ARRAY['planning'::text, 'active'::text, 'on_hold'::text, 'completed'::text, 'archived'::text])),
+  owner_id uuid,
+  start_date date,
+  end_date date,
+  tags ARRAY DEFAULT '{}'::text[],
+  body_doc jsonb DEFAULT '{}'::jsonb,
+  custom_properties jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT projects_pkey PRIMARY KEY (id),
+  CONSTRAINT projects_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT projects_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id),
+  CONSTRAINT projects_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.property_definitions (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  entity_type text NOT NULL CHECK (entity_type = ANY (ARRAY['task'::text, 'project'::text, 'client'::text])),
+  name text NOT NULL,
+  key text NOT NULL,
+  property_type text NOT NULL CHECK (property_type = ANY (ARRAY['text'::text, 'number'::text, 'date'::text, 'select'::text, 'multi_select'::text, 'checkbox'::text, 'url'::text, 'email'::text, 'person'::text, 'files'::text])),
+  config jsonb DEFAULT '{}'::jsonb,
+  is_required boolean DEFAULT false,
+  is_visible boolean DEFAULT true,
+  sort_order integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT property_definitions_pkey PRIMARY KEY (id),
+  CONSTRAINT property_definitions_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id)
+);
+CREATE TABLE public.saved_views (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  workspace_id uuid NOT NULL,
+  name text NOT NULL,
+  type text NOT NULL CHECK (type = ANY (ARRAY['list'::text, 'board'::text, 'calendar'::text])),
+  config jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT saved_views_pkey PRIMARY KEY (id),
+  CONSTRAINT saved_views_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id)
+);
+CREATE TABLE public.task_comments (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid,
+  record_type text NOT NULL,
+  record_id uuid NOT NULL,
+  user_id uuid,
+  content text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  archived_at timestamp with time zone,
+  CONSTRAINT task_comments_pkey PRIMARY KEY (id),
+  CONSTRAINT task_comments_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT task_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.tasks (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  client_id uuid,
+  project_id uuid,
+  parent_task_id uuid,
+  title text NOT NULL,
+  status text NOT NULL DEFAULT 'backlog'::text,
+  priority text DEFAULT 'medium'::text CHECK (priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'urgent'::text])),
+  due_date date,
+  start_date date,
+  assignee_ids ARRAY DEFAULT '{}'::uuid[],
+  body_doc jsonb DEFAULT '{}'::jsonb,
+  tags ARRAY DEFAULT '{}'::text[],
+  custom_properties jsonb DEFAULT '{}'::jsonb,
+  sort_order integer DEFAULT 0,
+  created_by uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  archived_at timestamp with time zone,
+  rejection_count integer DEFAULT 0,
+  last_client_feedback text,
+  client_view_status text DEFAULT 'pending'::text,
+  CONSTRAINT tasks_pkey PRIMARY KEY (id),
+  CONSTRAINT tasks_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT tasks_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id),
+  CONSTRAINT tasks_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id),
+  CONSTRAINT tasks_parent_task_id_fkey FOREIGN KEY (parent_task_id) REFERENCES public.tasks(id),
+  CONSTRAINT tasks_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_roles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  workspace_id uuid NOT NULL,
+  role USER-DEFINED NOT NULL,
+  granted_at timestamp with time zone DEFAULT now(),
+  granted_by uuid,
+  expires_at timestamp with time zone,
+  CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT user_roles_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT user_roles_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES auth.users(id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL,
+  full_name text,
+  nickname text,
+  title text,
+  avatar_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.workspace_join_requests (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  requested_at timestamp with time zone DEFAULT now(),
+  responded_at timestamp with time zone,
+  responded_by uuid,
+  CONSTRAINT workspace_join_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT workspace_join_requests_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT workspace_join_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT workspace_join_requests_responded_by_fkey FOREIGN KEY (responded_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.workspace_members (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  workspace_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  status text DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'inactive'::text, 'invited'::text])),
+  joined_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT workspace_members_pkey PRIMARY KEY (id),
+  CONSTRAINT workspace_members_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id),
+  CONSTRAINT workspace_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.workspaces (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name text NOT NULL,
+  slug text NOT NULL UNIQUE,
+  logo_url text,
+  theme text DEFAULT 'dark'::text CHECK (theme = ANY (ARRAY['light'::text, 'dark'::text, 'system'::text])),
+  background_type text DEFAULT 'color'::text CHECK (background_type = ANY (ARRAY['color'::text, 'gradient'::text, 'image'::text])),
+  background_value text DEFAULT '#1a1a2e'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  visibility text DEFAULT 'private'::text CHECK (visibility = ANY (ARRAY['private'::text, 'public'::text])),
+  created_by uuid,
+  CONSTRAINT workspaces_pkey PRIMARY KEY (id),
+  CONSTRAINT workspaces_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+);

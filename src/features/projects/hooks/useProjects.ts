@@ -1,33 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import type { Database } from '@/types/database.types';
 
-// Temporary type until we generate types from schema
-export type Project = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: 'planning' | 'active' | 'on_hold' | 'completed' | 'archived';
-  client_id: string | null;
-  owner_id: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string;
-  updated_at: string;
+export type Project = Database['public']['Tables']['projects']['Row'] & {
   clients?: {
     id: string;
     name: string;
   } | null;
 };
 
-export type CreateProjectInput = {
-  name: string;
-  client_id?: string | null;
-  description?: string;
-  status?: Project['status'];
-  start_date?: string | null;
-  end_date?: string | null;
-};
+export type CreateProjectInput = Database['public']['Tables']['projects']['Insert'];
 
 export function useProjects() {
   const { workspace } = useWorkspace();
@@ -41,7 +24,7 @@ export function useProjects() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('projects' as any)
+        .from('projects')
         .select(`
           *,
           clients (
@@ -53,7 +36,7 @@ export function useProjects() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProjects(data as any);
+      setProjects(data as Project[]);
     } catch (err: any) {
       console.error('Error fetching projects:', err);
       setError(err.message);
@@ -71,7 +54,7 @@ export function useProjects() {
 
     try {
       const { data, error } = await supabase
-        .from('projects' as any)
+        .from('projects')
         .insert({
           ...input,
           workspace_id: workspace.id,
@@ -82,7 +65,6 @@ export function useProjects() {
 
       if (error) throw error;
 
-      // Update local state (refreshing is safer to get client relation if needed)
       await fetchProjects(); 
       return data as Project;
     } catch (err: any) {

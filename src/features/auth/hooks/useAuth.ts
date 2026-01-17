@@ -9,10 +9,13 @@ export function useAuth() {
 
   useEffect(() => {
     // Check for mock user (for E2E tests)
-    if (typeof window !== 'undefined' && (window as any).__MOCK_USER__) {
+    const mockUser = typeof window !== 'undefined' ? (window as any).__MOCK_USER__ : null;
+    if (mockUser) {
       console.log('Using mock user for testing');
-      setUser((window as any).__MOCK_USER__);
-      setLoading(false);
+      setTimeout(() => {
+        setUser(mockUser as any);
+        setLoading(false);
+      }, 0);
       return;
     }
 
@@ -63,7 +66,7 @@ export function useAuth() {
     return supabase.auth.verifyOtp({
       email,
       token,
-      type: type as any, // 'email' | 'signup' | 'recovery' | 'magiclink'
+      type: type as 'email' | 'signup',
     })
   }
 

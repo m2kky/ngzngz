@@ -31,12 +31,6 @@ export const ownerSteps: ExtendedStep[] = [
         route: '/ads',
     },
     {
-        target: '[data-tour="meeting-dojo"]',
-        content: 'Record meetings, transcribe them, and instantly turn notes into actionable tasks.',
-        title: 'Meeting Dojo',
-        route: '/meetings',
-    },
-    {
         target: '[data-tour="brand-kit"]',
         content: 'Maintain brand consistency. Upload logos, define color palettes, and set typography for your clients.',
         title: 'Brand Kit',
@@ -94,12 +88,6 @@ export const memberSteps: ExtendedStep[] = [
         content: 'View your assigned content tasks and collaborate with your team.',
         title: 'Content Studio',
         route: '/content',
-    },
-    {
-        target: '[data-tour="meeting-dojo"]',
-        content: 'Join meetings, view transcripts, and complete assigned action items.',
-        title: 'Meetings',
-        route: '/meetings',
     },
     {
         target: '[data-tour="squad"]',

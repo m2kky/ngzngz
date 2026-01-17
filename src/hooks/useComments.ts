@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { getErrorMessage } from '@/lib/errors';
 
 export type Comment = {
   id: string;
@@ -47,19 +48,21 @@ export function useComments() {
       }
       
       const { data, error } = await supabase
-        .from('task_comments')
+        .from('comments')
         .select('*, users(full_name, nickname, avatar_url)')
         .eq('record_type', recordType)
         .eq('record_id', recordId)
         .eq('workspace_id', workspace.id)
         .is('archived_at', null)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .returns<Comment[]>();
 
       if (error) throw error;
-      setComments(data as Comment[]);
-    } catch (err: any) {
-      console.error('Error fetching comments:', err);
-      setError(err.message);
+      setComments((data ?? []) as Comment[]);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error('Error fetching comments:', message);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -71,16 +74,18 @@ export function useComments() {
 
     try {
       setError(null);
-      const { data, error } = await (supabase
-        .from('task_comments') as any)
+      const { data, error } = await supabase
+        .from('comments')
         .insert({
           record_type: input.recordType,
           record_id: input.recordId,
           user_id: user.id,
           workspace_id: workspace.id,
           content: input.content,
+          mentioned_user_ids: [],
         })
-        .select()
+        .select('*, users(full_name, nickname, avatar_url)')
+        .returns<Comment>()
         .single();
 
       if (error) throw error;
@@ -88,9 +93,10 @@ export function useComments() {
       // Update local state
       setComments(prev => [...prev, data as Comment]);
       return data as Comment;
-    } catch (err: any) {
-      console.error('Error adding comment:', err);
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error('Error adding comment:', message);
+      setError(message);
       throw err;
     }
   }, [user, workspace]);
@@ -100,24 +106,26 @@ export function useComments() {
 
     try {
       setError(null);
-      const { data, error } = await (supabase
-        .from('task_comments') as any)
+      const { data, error } = await supabase
+        .from('comments')
         .update({ content: input.content })
         .eq('id', commentId)
         .eq('user_id', user.id)
         .select()
+        .returns<Comment>()
         .single();
 
       if (error) throw error;
 
       // Update local state
       setComments(prev => prev.map(comment => 
-        comment.id === commentId ? { ...comment, ...data } : comment
+        comment.id === commentId ? { ...comment, ...(data as Comment) } : comment
       ));
       return data as Comment;
-    } catch (err: any) {
-      console.error('Error updating comment:', err);
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error('Error updating comment:', message);
+      setError(message);
       throw err;
     }
   }, [user]);
@@ -127,8 +135,8 @@ export function useComments() {
 
     try {
       setError(null);
-      const { error } = await (supabase
-        .from('task_comments') as any)
+      const { error } = await supabase
+        .from('comments')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', commentId)
         .eq('user_id', user.id);
@@ -137,9 +145,10 @@ export function useComments() {
 
       // Update local state (remove comment)
       setComments(prev => prev.filter(comment => comment.id !== commentId));
-    } catch (err: any) {
-      console.error('Error deleting comment:', err);
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      console.error('Error deleting comment:', message);
+      setError(message);
       throw err;
     }
   }, [user]);

@@ -6,7 +6,7 @@ import {
   Users, 
   FolderKanban, 
   CheckSquare, 
-  Calendar, 
+  Calendar,
   TrendingUp, 
   Target, 
   Palette, 

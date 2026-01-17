@@ -1,0 +1,10 @@
+{
+  "output": {
+    "style": "xml",
+    "filePath": "repomix-output.xml"
+  },
+  "include": ["src/**", "actions/**", "lib/**", "components/**", "hooks/**", "types/**", "app/**", "AI_RULES.md", "LESSONS_LEARNED.md"],
+  "ignore": ["node_modules/**", ".git/**", ".next/**", "dist/**", "**.lock", "public/**"],
+  "removeComments": false,
+  "removeEmptyLines": true
+}

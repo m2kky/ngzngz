@@ -6,7 +6,7 @@ const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Users, label: 'Clients', path: '/clients' },
   { icon: CheckSquare, label: 'Tasks', path: '/tasks' },
-  { icon: Calendar, label: 'Calendar', path: '/calendar' },
+  { icon: Calendar, label: 'Meetings', path: '/meetings' },
 ];
 
 export function MobileBottomBar() {

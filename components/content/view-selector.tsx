@@ -14,19 +14,19 @@ import {
     Check,
     X
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/../components/ui/button"
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { createClient } from "@/lib/supabase/client"
-import { useWorkspace } from "@/components/providers/workspace-provider"
+} from "@/../components/ui/dialog"
+import { Input } from "@/../components/ui/input"
+import { createClient } from "@/../lib/supabase/client"
+import { useWorkspace } from "@/hooks/useWorkspace"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/../lib/utils"
 
 export interface ViewConfig {
     groupBy?: string
@@ -47,6 +47,7 @@ interface ViewSelectorProps {
     currentView: UserView | null
     onViewChange: (view: UserView | null) => void
     defaultViewType: string
+    entityType?: string
 }
 
 const VIEW_ICONS: Record<string, any> = {
@@ -62,44 +63,50 @@ const VIEW_ICONS: Record<string, any> = {
     ACTIVITY: Activity
 }
 
-export function ViewSelector({ currentView, onViewChange, defaultViewType }: ViewSelectorProps) {
+export function ViewSelector({ currentView, onViewChange, defaultViewType, entityType }: ViewSelectorProps) {
     const [views, setViews] = useState<UserView[]>([])
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [selectedType, setSelectedType] = useState<UserView["view_type"]>("KANBAN")
     const [newViewName, setNewViewName] = useState("")
-    const { currentWorkspace } = useWorkspace()
+    const { workspace: currentWorkspace } = useWorkspace()
     const supabase = createClient()
 
     useEffect(() => {
         async function fetchViews() {
             if (!currentWorkspace) return
             const { data } = await supabase
-                .from("user_views")
+                .from("saved_views")
                 .select("*")
                 .eq("workspace_id", currentWorkspace.id)
+                .eq("entity_type", entityType || "TASK")
                 .order("created_at", { ascending: true })
 
-            if (data) setViews(data)
+            if (data) {
+                const formattedViews: UserView[] = data.map(v => ({
+                    id: v.id,
+                    view_name: v.name,
+                    view_type: v.type as any,
+                    view_config: v.config as any
+                }))
+                setViews(formattedViews)
+            }
         }
         fetchViews()
-    }, [currentWorkspace])
+    }, [currentWorkspace, entityType])
 
     const handleCreateView = async () => {
         if (!newViewName.trim() || !currentWorkspace) return
 
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
         const newView = {
             workspace_id: currentWorkspace.id,
-            user_id: user.id,
-            view_name: newViewName,
-            view_type: selectedType,
-            view_config: { groupBy: "status" }, // Default config
+            name: newViewName,
+            type: selectedType,
+            entity_type: entityType || "TASK",
+            config: { groupBy: "status" }, // Default config
         }
 
         const { data, error } = await supabase
-            .from("user_views")
+            .from("saved_views")
             .insert(newView as any)
             .select()
             .single()
@@ -109,10 +116,17 @@ export function ViewSelector({ currentView, onViewChange, defaultViewType }: Vie
             return
         }
 
-        setViews([...views, data])
+        const formattedView: UserView = {
+            id: data.id,
+            view_name: data.name,
+            view_type: data.type as any,
+            view_config: data.config as any
+        }
+
+        setViews([...views, formattedView])
         setNewViewName("")
         setIsCreateOpen(false)
-        onViewChange(data)
+        onViewChange(formattedView)
         toast.success("View created successfully")
     }
 
@@ -121,7 +135,7 @@ export function ViewSelector({ currentView, onViewChange, defaultViewType }: Vie
         if (!currentWorkspace) return
 
         const { error } = await supabase
-            .from("user_views")
+            .from("saved_views")
             .delete()
             .eq("id", viewId)
 

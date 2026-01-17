@@ -141,28 +141,6 @@ export interface Database {
                     created_at: string
                     updated_at: string
                 }
-                Insert: {
-                    id?: string
-                    name: string
-                    slug: string
-                    logo_url?: string | null
-                    branding_config?: Json
-                    status?: 'ACTIVE' | 'ARCHIVED'
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
-                Update: {
-                    id?: string
-                    name?: string
-                    slug?: string
-                    logo_url?: string | null
-                    branding_config?: Json
-                    status?: 'ACTIVE' | 'ARCHIVED'
-                    created_by?: string | null
-                    created_at?: string
-                    updated_at?: string
-                }
             }
             task_statuses: {
                 Row: {

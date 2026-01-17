@@ -3,24 +3,36 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import type { RecordType } from '@/types/record';
+import type { Database } from '@/types/database.types';
+
+type TableNameFromType<T extends RecordType> =
+  T extends 'task' ? 'tasks' :
+  T extends 'project' ? 'projects' :
+  'clients';
+
+type TableRowFromType<T extends RecordType> =
+  Database['public']['Tables'][TableNameFromType<T>]['Row'];
+
+type TableUpdateFromType<T extends RecordType> =
+  Database['public']['Tables'][TableNameFromType<T>]['Update'];
 
 export function useUpdateRecord() {
   const { user } = useAuth();
   const { workspace } = useWorkspace();
   const [updating, setUpdating] = useState(false);
 
-  const updateRecord = async (
-    type: RecordType,
+  const updateRecord = async <T extends RecordType>(
+    type: T,
     id: string,
-    updates: Record<string, unknown>,
-    oldRecord?: Record<string, unknown>
-  ) => {
+    updates: Partial<TableUpdateFromType<T>>,
+    oldRecord?: Partial<TableRowFromType<T>>
+  ): Promise<TableRowFromType<T>> => {
     setUpdating(true);
     try {
-      const table = type === 'task' ? 'tasks' : type === 'project' ? 'projects' : 'clients';
+      const table = type === 'task' ? 'tasks' as const : type === 'project' ? 'projects' as const : 'clients' as const;
       
-      const { data, error } = await (supabase
-        .from(table) as any)
+      const { data, error } = await supabase
+        .from(table)
         .update(updates)
         .eq('id', id)
         .select()
@@ -30,12 +42,10 @@ export function useUpdateRecord() {
 
       // Log activity for each changed field
       if (user && workspace && oldRecord) {
-        const changedFields = Object.keys(updates).filter(
-          key => oldRecord[key] !== updates[key]
-        );
+        const changedFields = Object.keys(updates).filter((key) => (oldRecord as Record<string, unknown>)[key] !== (updates as Record<string, unknown>)[key]);
 
         for (const field of changedFields) {
-          await (supabase.from('activity_log') as any).insert({
+          await supabase.from('activity_logs').insert({
             workspace_id: workspace.id,
             user_id: user.id,
             record_type: type,
@@ -43,14 +53,14 @@ export function useUpdateRecord() {
             action_type: field === 'status' ? 'status_changed' : 'updated',
             metadata: {
               field,
-              old_value: oldRecord[field],
-              new_value: updates[field],
+              old_value: (oldRecord as Record<string, unknown>)[field],
+              new_value: (updates as Record<string, unknown>)[field],
             },
           });
         }
       } else if (user && workspace) {
         // If no old record, just log a generic update
-        await (supabase.from('activity_log') as any).insert({
+        await supabase.from('activity_logs').insert({
           workspace_id: workspace.id,
           user_id: user.id,
           record_type: type,
@@ -60,10 +70,11 @@ export function useUpdateRecord() {
         });
       }
 
-      return data;
-    } catch (error) {
-      console.error('Error updating record:', error);
-      throw error;
+      return data as TableRowFromType<T>;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Error updating record:', message);
+      throw err;
     } finally {
       setUpdating(false);
     }

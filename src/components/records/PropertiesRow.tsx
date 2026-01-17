@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Settings2, Trash2, Edit2, Plus, GripVertical, Check, Upload, File as FileIcon, Link as LinkIcon, Copy, ArrowRightLeft } from "lucide-react";
+import { Settings2, Trash2, Edit2, Plus, Check, Upload, File as FileIcon, Link as LinkIcon, Copy, ArrowRightLeft, MoreHorizontal } from "lucide-react";
 import type { WorkspaceMemberProfile } from "@/hooks/useWorkspaceMembers";
 
 export type PropertyType = 'text' | 'select' | 'date' | 'custom' | 'person' | 'files' | 'url' | 'email' | 'number' | 'multi_select' | 'checkbox';

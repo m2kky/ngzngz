@@ -2,26 +2,26 @@
 
 import { useState, useEffect, useRef } from "react"
 import { X, Sparkles, Zap, Loader2, LayoutTemplate, Copy, Briefcase } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { BlockEditor } from "@/components/content/block-editor"
-import type { Database } from "@/types/database"
+import { Button } from "@/../components/ui/button"
+import { Input } from "@/../components/ui/input"
+import { StatusBadge } from "@/../components/shared/status-badge"
+import { BlockEditor } from "@/../components/content/block-editor"
+import type { Database } from "@/types/database.types"
 import { toast } from "sonner"
-import { useWorkspace } from "@/components/providers/workspace-provider"
-import { createClient } from "@/lib/supabase/client"
-import { PropertyField, PropertyDefinition, PROPERTY_ICONS } from "@/components/content/property-field"
-import { PropertyManager } from "@/components/content/property-manager"
-import { TASK_TEMPLATES } from "@/config/templates"
-import { usePresence } from "@/hooks/use-presence"
-import { useRealtimeTask } from "@/hooks/use-realtime-task"
+import { useWorkspace } from "@/hooks/useWorkspace"
+import { createClient } from "@/../lib/supabase/client"
+import { PropertyField, PropertyDefinition, PROPERTY_ICONS } from "@/../components/content/property-field"
+import { PropertyManager } from "@/../components/content/property-manager"
+import { TASK_TEMPLATES } from "@/../config/templates"
+import { usePresence } from "@/../hooks/use-presence"
+import { useRealtimeTask } from "@/../hooks/use-realtime-task"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select"
+} from "@/../components/ui/select"
 
 type Task = Database["public"]["Tables"]["tasks"]["Row"]
 
@@ -31,13 +31,15 @@ interface TaskModalProps {
     onClose: () => void
     onSave: (task: Partial<Task>) => void
     defaultProjectId?: string // Added prop for context-aware creation
+    defaultClientId?: string // Added prop for context-aware creation
 }
 
-export function TaskModal({ task, isNew, onClose, onSave, defaultProjectId }: TaskModalProps) {
+export function TaskModal({ task, isNew, onClose, onSave, defaultProjectId, defaultClientId }: TaskModalProps) {
     const [title, setTitle] = useState(task?.title || "")
     const [status, setStatus] = useState(task?.status || "DRAFTING")
     const [priority, setPriority] = useState(task?.priority || "MEDIUM")
     const [projectId, setProjectId] = useState<string | null>(task?.project_id || defaultProjectId || null)
+    const [clientId, setClientId] = useState<string | null>(task?.client_id || defaultClientId || null)
 
     const [content, setContent] = useState<any>(task?.content_blocks || [])
     const [properties, setProperties] = useState<Record<string, any>>((task as any)?.properties || {})
@@ -145,6 +147,7 @@ export function TaskModal({ task, isNew, onClose, onSave, defaultProjectId }: Ta
                 setStatus(task.status || "DRAFTING")
                 setPriority(task.priority || "MEDIUM")
                 setProjectId(task.project_id || null)
+                setClientId(task.client_id || null)
                 setContent(task.content_blocks || [])
                 setProperties((task as any).properties || {})
                 setAiScore(task.ai_score || null)
@@ -154,6 +157,7 @@ export function TaskModal({ task, isNew, onClose, onSave, defaultProjectId }: Ta
                 setStatus("DRAFTING")
                 setPriority("MEDIUM")
                 setProjectId(defaultProjectId || null)
+                setClientId(defaultClientId || null)
                 setContent([])
                 setProperties({})
                 setAiScore(null)
@@ -225,7 +229,8 @@ export function TaskModal({ task, isNew, onClose, onSave, defaultProjectId }: Ta
             ai_feedback: aiFeedback,
             priority: priority as any,
             workspace_id: task?.workspace_id || currentWorkspace?.id || "",
-            project_id: projectId
+            project_id: projectId,
+            client_id: clientId
         }
 
         onSave(taskData)

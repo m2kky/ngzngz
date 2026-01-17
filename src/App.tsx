@@ -6,6 +6,11 @@ import { ClientsPage } from "@/features/clients/pages/ClientsPage";
 import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { TasksPage } from "@/features/tasks/pages/TasksPage";
 import { MeetingsPage } from "@/features/meetings/pages/MeetingsPage";
+import { StrategyPage } from "@/features/strategy/pages/StrategyPage";
+import { BrandKitPage } from "@/features/brand-kit/pages/BrandKitPage";
+import { BrandKitDetailPage } from "@/features/brand-kit/pages/BrandKitDetailPage";
+import { AdsLandingPage } from "@/features/ads/pages/AdsLandingPage";
+import { ClientAdsPage } from "@/features/ads/pages/ClientAdsPage";
 import { RecordPage } from "@/components/records/RecordPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
@@ -47,7 +52,7 @@ function ProtectedRoute() {
 function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" richColors toastOptions={{ style: { zIndex: 99999 } }} />
       <WorkspaceProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -61,6 +66,11 @@ function App() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/meetings" element={<MeetingsPage />} />
+            <Route path="/strategy" element={<StrategyPage />} />
+            <Route path="/brand-kits" element={<BrandKitPage />} />
+            <Route path="/brand-kits/:id" element={<BrandKitDetailPage />} />
+            <Route path="/ads" element={<AdsLandingPage />} />
+            <Route path="/ads/:clientId" element={<ClientAdsPage />} />
             <Route path="/tasks/:taskId" element={<RecordPage />} />
           </Route>
         </Routes>

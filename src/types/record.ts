@@ -1,1 +1,1 @@
-export type RecordType = 'task' | 'client' | 'project';
+export type RecordType = 'task' | 'client' | 'project' | 'meeting';

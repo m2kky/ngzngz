@@ -6,9 +6,11 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type ColumnDef,
   type ColumnFiltersState,
   type SortingState,
   type VisibilityState,
+  type OnChangeFn,
 } from "@tanstack/react-table";
 import { ChevronDown } from "lucide-react";
 
@@ -28,81 +30,64 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { type Task } from "@/features/tasks/types";
-import { createColumns } from "./columns";
 
-interface DataTableProps {
-  tasks: Task[];
-  loading: boolean;
-  onTaskClick: (taskId: string) => void;
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  loading?: boolean;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
 }
 
-export function DataTable({ tasks, loading, onTaskClick }: DataTableProps) {
+export function DataTable<TData, TValue>({ 
+  columns,
+  data, 
+  loading, 
+  columnVisibility,
+  onColumnVisibilityChange 
+}: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  // Use internal state if not controlled
+  const [internalColumnVisibility, setInternalColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const columns = React.useMemo(() => createColumns(onTaskClick), [onTaskClick]);
-
   const table = useReactTable({
-    data: tasks,
+    data: data || [],
     columns,
-   onSortingChange: setSorting,
+    onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
+    // Use controlled or internal state
+    onColumnVisibilityChange: onColumnVisibilityChange || setInternalColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
-      columnVisibility,
+      columnVisibility: columnVisibility || internalColumnVisibility,
       rowSelection,
     },
   });
 
   if (loading) {
-    return <div className="p-8 text-center text-muted-foreground">Loading tasks...</div>;
+    return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
   }
 
   return (
     <div className="w-full px-6 py-4">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter tasks..."
+          placeholder="Filter..."
           value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("title")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Internal column visibility toggle removed - handled by external toolbar */}
       </div>
       <div className="rounded-md border">
         <Table>

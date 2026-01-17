@@ -56,12 +56,31 @@ export function MeetingsGrid({ meetings, onMeetingClick }: MeetingsGridProps) {
             </p>
             <div className="flex items-center justify-between mt-auto pt-4 border-t">
               <div className="flex -space-x-2">
-                {/* Attendees placeholder */}
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-7 w-7 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-medium">
-                    U{i}
-                  </div>
-                ))}
+                {meeting.meeting_attendees && meeting.meeting_attendees.length > 0 ? (
+                  meeting.meeting_attendees.map((attendee) => (
+                    <div 
+                      key={attendee.user_id} 
+                      className="h-7 w-7 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden"
+                      title={attendee.users?.full_name || 'Attendee'}
+                    >
+                      {attendee.users?.avatar_url ? (
+                        <img 
+                          src={attendee.users.avatar_url} 
+                          alt={attendee.users.full_name || ''} 
+                          className="h-full w-full object-cover" 
+                        />
+                      ) : (
+                        <span className="text-[10px] font-medium">
+                          {attendee.users?.full_name 
+                            ? attendee.users.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                            : 'U'}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground italic">No attendees</span>
+                )}
               </div>
               <Button variant="ghost" size="sm" className="text-xs">
                 View Details

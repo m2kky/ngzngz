@@ -12,9 +12,26 @@ export type Meeting = Database['public']['Tables']['meetings']['Row'] & {
     id: string;
     name: string;
   } | null;
+  meeting_attendees?: {
+    user_id: string;
+    users?: {
+      full_name: string | null;
+      avatar_url: string | null;
+    } | null;
+  }[];
+  meeting_assets?: {
+    id: string;
+    name: string;
+    url: string;
+    type: string | null;
+    size_bytes: number | null;
+    created_at: string;
+  }[];
 };
 
-export type CreateMeetingInput = Database['public']['Tables']['meetings']['Insert'];
+export type CreateMeetingInput = Database['public']['Tables']['meetings']['Insert'] & {
+  attendees?: string[]; // Array of user_ids
+};
 
 export function useMeetings() {
   const { workspace } = useWorkspace();
@@ -38,6 +55,13 @@ export function useMeetings() {
           projects (
             id,
             name
+          ),
+          meeting_attendees (
+            user_id,
+            users (
+              full_name,
+              avatar_url
+            )
           )
         `)
         .eq('workspace_id', workspace.id)
@@ -62,20 +86,41 @@ export function useMeetings() {
   const createMeeting = async (input: CreateMeetingInput) => {
     if (!workspace) throw new Error('No workspace selected');
 
+    const { attendees, ...meetingData } = input;
+
     try {
+      // 1. Create the meeting
       const { data, error } = await supabase
         .from('meetings')
         .insert({
-          ...input,
+          ...meetingData,
           workspace_id: workspace.id,
-          status: input.status || 'SCHEDULED',
+          status: meetingData.status || 'SCHEDULED',
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      await fetchMeetings();
+      // 2. Add attendees if any
+      if (attendees && attendees.length > 0) {
+        const attendeesToInsert = attendees.map(userId => ({
+          meeting_id: data.id,
+          user_id: userId,
+          status: 'PENDING'
+        }));
+
+        const { error: attendeesError } = await supabase
+          .from('meeting_attendees')
+          .insert(attendeesToInsert);
+
+        if (attendeesError) {
+          console.error('Error adding attendees:', attendeesError);
+          // We don't throw here to avoid failing the whole creation, but we could
+        }
+      }
+
+      await fetchMeetings(); // Refresh list after creation
       return data as Meeting;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unknown error occurred';

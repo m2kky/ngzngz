@@ -665,6 +665,94 @@ export interface Database {
                     metadata?: Json
                     created_at?: string
                 }
+            },
+            strategies: {
+                Row: {
+                    id: string
+                    workspace_id: string
+                    client_id: string
+                    title: string
+                    status: string
+                    situation: string | null
+                    objectives: string | null
+                    strategy: string | null
+                    tactics: string | null
+                    action: string | null
+                    control: string | null
+                    buyer_personas: Json
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    workspace_id: string
+                    client_id: string
+                    title: string
+                    status?: string
+                    situation?: string | null
+                    objectives?: string | null
+                    strategy?: string | null
+                    tactics?: string | null
+                    action?: string | null
+                    control?: string | null
+                    buyer_personas?: Json
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    workspace_id?: string
+                    client_id?: string
+                    title?: string
+                    status?: string
+                    situation?: string | null
+                    objectives?: string | null
+                    strategy?: string | null
+                    tactics?: string | null
+                    action?: string | null
+                    control?: string | null
+                    buyer_personas?: Json
+                    created_at?: string
+                    updated_at?: string
+                }
+            },
+            brand_kits: {
+                Row: {
+                    id: string
+                    workspace_id: string
+                    client_id: string
+                    name: string
+                    voice_sliders: Json
+                    colors: Json
+                    typography: Json
+                    guidelines: Json
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    workspace_id: string
+                    client_id: string
+                    name: string
+                    voice_sliders?: Json
+                    colors?: Json
+                    typography?: Json
+                    guidelines?: Json
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    workspace_id?: string
+                    client_id?: string
+                    name?: string
+                    voice_sliders?: Json
+                    colors?: Json
+                    typography?: Json
+                    guidelines?: Json
+                    created_at?: string
+                    updated_at?: string
+                }
             }
         }
         Views: {

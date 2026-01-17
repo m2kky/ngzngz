@@ -1,0 +1,105 @@
+.rbc-calendar {
+  color: #ededed;
+  font-family: inherit;
+}
+
+.rbc-header {
+  padding: 8px 0;
+  font-weight: 500;
+  color: #a1a1aa; /* muted-foreground */
+  border-bottom: 1px solid #2c2c2c !important;
+}
+
+.rbc-month-view {
+  border: 1px solid #2c2c2c !important;
+  background-color: #141414;
+}
+
+.rbc-day-bg {
+  border-left: 1px solid #2c2c2c !important;
+}
+
+.rbc-off-range-bg {
+  background-color: #1a1a1a;
+}
+
+.rbc-month-row {
+  border-bottom: 1px solid #2c2c2c !important;
+}
+
+.rbc-date-cell {
+  padding: 8px;
+  font-size: 0.875rem;
+}
+
+.rbc-today {
+  background-color: #2c2c2c;
+}
+
+.rbc-event {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 4px;
+}
+
+.rbc-event:focus {
+  outline: none;
+}
+
+.rbc-toolbar {
+  margin-bottom: 16px;
+}
+
+.rbc-toolbar button {
+  color: #ededed;
+  border: 1px solid #2c2c2c !important;
+}
+
+.rbc-toolbar button:active,
+.rbc-toolbar button.rbc-active {
+  background-color: #2c2c2c !important;
+  color: #fff;
+  box-shadow: none !important;
+}
+
+.rbc-toolbar button:hover {
+  background-color: #262626;
+}
+
+.rbc-show-more {
+  background-color: transparent;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Time Grid Views (Week/Day) */
+.rbc-time-view {
+  border: 1px solid #2c2c2c !important;
+  background-color: #141414;
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid #2c2c2c !important;
+}
+
+.rbc-time-content {
+  border-top: 1px solid #2c2c2c !important;
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid #2c2c2c !important;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  border-right: 1px solid #2c2c2c !important;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #2c2c2c !important;
+}
+
+.rbc-day-slot {
+  border-left: 1px solid #2c2c2c !important;
+}

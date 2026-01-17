@@ -8,7 +8,8 @@ import type { Database } from '@/types/database.types';
 type TableNameFromType<T extends RecordType> =
   T extends 'task' ? 'tasks' :
   T extends 'project' ? 'projects' :
-  'clients';
+  T extends 'client' ? 'clients' :
+  'meetings';
 
 type TableRowFromType<T extends RecordType> =
   Database['public']['Tables'][TableNameFromType<T>]['Row'];
@@ -29,7 +30,11 @@ export function useUpdateRecord() {
   ): Promise<TableRowFromType<T>> => {
     setUpdating(true);
     try {
-      const table = type === 'task' ? 'tasks' as const : type === 'project' ? 'projects' as const : 'clients' as const;
+      const table = 
+        type === 'task' ? 'tasks' : 
+        type === 'project' ? 'projects' : 
+        type === 'client' ? 'clients' : 
+        'meetings';
       
       const { data, error } = await supabase
         .from(table)

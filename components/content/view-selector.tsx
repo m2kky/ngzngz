@@ -228,7 +228,6 @@ export function ViewSelector({ currentView, onViewChange, defaultViewType, entit
                                     { type: "TABLE", label: "Table", icon: List },
                                     { type: "GALLERY", label: "Gallery", icon: ImageIcon },
                                     { type: "CALENDAR", label: "Calendar", icon: Calendar },
-                                    { type: "TIMELINE", label: "Timeline", icon: StretchHorizontal },
                                     { type: "CHART", label: "Chart", icon: BarChart3 },
                                 ].map((option) => {
                                     const Icon = option.icon

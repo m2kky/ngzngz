@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { 
   FileText,
   MessageSquare,
@@ -18,6 +18,7 @@ import { MeetingNotes } from './sheet/MeetingNotes';
 import { MeetingAttendees } from './sheet/MeetingAttendees';
 import { MeetingAssets } from './sheet/MeetingAssets';
 import { Loader2 } from 'lucide-react';
+import { useUpdateRecord } from '@/hooks/useUpdateRecord';
 
 interface MeetingSheetProps {
   meetingId: string | null;
@@ -44,6 +45,7 @@ export function MeetingSheet({ meetingId, open, onOpenChange }: MeetingSheetProp
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
+  const { updateRecord, updating } = useUpdateRecord();
 
   useEffect(() => {
     if (open && meetingId) {
@@ -82,6 +84,17 @@ export function MeetingSheet({ meetingId, open, onOpenChange }: MeetingSheetProp
       if (attendeesError) throw attendeesError;
       setAttendees(attendeesData as any);
 
+      // Fetch assets
+      const { data: assetsData, error: assetsError } = await supabase
+        .from('meeting_assets')
+        .select('*')
+        .eq('meeting_id', meetingId)
+        .order('created_at', { ascending: false });
+
+      if (assetsError) throw assetsError;
+      
+      setMeeting(prev => prev ? { ...prev, meeting_assets: assetsData } : null);
+
     } catch (error: unknown) {
       console.error('Error fetching meeting details:', error);
       toast.error('Failed to load meeting details');
@@ -98,16 +111,41 @@ export function MeetingSheet({ meetingId, open, onOpenChange }: MeetingSheetProp
   const saveNotes = async () => {
     if (!meetingId) return;
     try {
-      const { error } = await supabase
-        .from('meetings')
-        .update({ description: notes })
-        .eq('id', meetingId);
-      
-      if (error) throw error;
+      await updateRecord(
+        'meeting',
+        meetingId,
+        { description: notes }
+      );
       toast.success('Notes saved');
     } catch (error: unknown) {
       toast.error('Failed to save notes');
     }
+  };
+
+  const handleAddAttendee = async (userId: string) => {
+    if (!meetingId) return;
+    try {
+      const { error } = await supabase
+        .from('meeting_attendees')
+        .insert({
+          meeting_id: meetingId,
+          user_id: userId,
+          status: 'PENDING'
+        });
+
+      if (error) throw error;
+      
+      toast.success('Attendee added successfully');
+      fetchMeetingDetails();
+    } catch (error) {
+      console.error('Error adding attendee:', error);
+      toast.error('Failed to add attendee');
+    }
+  };
+
+  const handleUploadAsset = () => {
+    // This will be triggered by the child component, just refresh needed
+    fetchMeetingDetails();
   };
 
   if (!meetingId) return null;
@@ -115,6 +153,8 @@ export function MeetingSheet({ meetingId, open, onOpenChange }: MeetingSheetProp
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-[600px] p-0 flex flex-col h-full border-l">
+        <SheetTitle className="sr-only">Meeting Details</SheetTitle>
+        <SheetDescription className="sr-only">Manage meeting details, attendees, and assets</SheetDescription>
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -151,18 +191,23 @@ export function MeetingSheet({ meetingId, open, onOpenChange }: MeetingSheetProp
                     notes={notes} 
                     onNotesChange={handleNotesChange} 
                     onSave={saveNotes} 
+                    loading={updating}
                   />
                 </TabsContent>
 
                 <TabsContent value="properties">
                   <MeetingAttendees 
                     meeting={meeting} 
-                    attendees={attendees} 
+                    attendees={attendees}
+                    onAddAttendee={handleAddAttendee}
                   />
                 </TabsContent>
 
                 <TabsContent value="assets">
-                  <MeetingAssets meeting={meeting} />
+                  <MeetingAssets 
+                    meeting={meeting} 
+                    onAssetUploaded={fetchMeetingDetails}
+                  />
                 </TabsContent>
 
                 <TabsContent value="comments" className="m-0 p-0 flex flex-col h-full">

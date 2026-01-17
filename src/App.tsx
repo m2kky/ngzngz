@@ -12,6 +12,7 @@ import { BrandKitDetailPage } from "@/features/brand-kit/pages/BrandKitDetailPag
 import { AdsLandingPage } from "@/features/ads/pages/AdsLandingPage";
 import { ClientAdsPage } from "@/features/ads/pages/ClientAdsPage";
 import { RecordPage } from "@/components/records/RecordPage";
+import { TeamSettingsPage } from "@/features/settings/pages/TeamSettings";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
 import { AcceptInvitePage } from "@/features/onboarding/pages/AcceptInvitePage";
@@ -19,6 +20,7 @@ import { SignupPage } from "@/features/auth/pages/SignupPage";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
+import { RBACProvider } from "@/features/auth/context/RBACContext";
 import { Loader2 } from "lucide-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -46,9 +48,11 @@ function ProtectedRoute() {
   }
 
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <RBACProvider>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </RBACProvider>
   );
 }
 
@@ -76,6 +80,7 @@ function App() {
               <Route path="/ads" element={<AdsLandingPage />} />
               <Route path="/ads/:clientId" element={<ClientAdsPage />} />
               <Route path="/tasks/:taskId" element={<RecordPage />} />
+              <Route path="/settings" element={<TeamSettingsPage />} />
             </Route>
           </Routes>
         </WorkspaceProvider>

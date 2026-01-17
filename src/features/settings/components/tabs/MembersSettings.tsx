@@ -18,36 +18,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 
+import { InviteModal } from '@/components/invites/invite-modal';
+
 export function MembersSettings() {
   const { members, loading: membersLoading } = useWorkspaceMembers();
-  const { invitations, createInvitation, revokeInvitation, fetchInvitations } = useInvitations();
-  const { workspace } = useWorkspace();
+  const { invitations, revokeInvitation, fetchInvitations } = useInvitations();
   
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
-  const [isInviting, setIsInviting] = useState(false);
-
   // Initial fetch of invitations
   useEffect(() => {
     fetchInvitations();
   }, [fetchInvitations]);
-
-  const handleInvite = async () => {
-     if (!inviteEmail) return;
-     setIsInviting(true);
-     try {
-        await createInvitation({ email: inviteEmail, role: inviteRole });
-        setShowInviteDialog(false);
-        setInviteEmail('');
-        setInviteRole('member');
-     } catch (err) {
-        // Error handling matches global patterns; simplified for brevity
-        console.error(err);
-     } finally {
-        setIsInviting(false);
-     }
-  };
 
   const copyInviteLink = (token: string) => {
      const link = `${window.location.origin}/invite/${token}`;
@@ -63,52 +43,12 @@ export function MembersSettings() {
           <h2 className="text-xl font-semibold mb-1">Members</h2>
           <p className="text-sm text-muted-foreground">Manage workspace access and roles.</p>
         </div>
-        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-           <DialogTrigger asChild>
-             <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-               <Mail className="w-4 h-4 mr-2" />
-               Invite Member
-             </Button>
-           </DialogTrigger>
-           <DialogContent className="bg-[#191919] border-[#2c2c2c] text-white">
-              <DialogHeader>
-                 <DialogTitle>Invite Member</DialogTitle>
-                 <DialogDescription>
-                    Send an invitation to join {workspace?.name}.
-                 </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                 <div className="space-y-2">
-                    <Label>Email Address</Label>
-                    <Input 
-                       placeholder="colleague@example.com" 
-                       value={inviteEmail}
-                       onChange={(e) => setInviteEmail(e.target.value)}
-                       className="bg-[#2c2c2c] border-[#3c3c3c] text-white"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <Label>Role</Label>
-                    <Select value={inviteRole} onValueChange={(v: 'admin' | 'member') => setInviteRole(v)}>
-                       <SelectTrigger className="bg-[#2c2c2c] border-[#3c3c3c] text-white">
-                          <SelectValue />
-                       </SelectTrigger>
-                       <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
-                       </SelectContent>
-                    </Select>
-                 </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                 <Button variant="ghost" onClick={() => setShowInviteDialog(false)}>Cancel</Button>
-                 <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
-                    {isInviting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Send Invite
-                 </Button>
-              </div>
-           </DialogContent>
-        </Dialog>
+        <InviteModal>
+           <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+             <Mail className="w-4 h-4 mr-2" />
+             Invite Member
+           </Button>
+        </InviteModal>
       </div>
 
       {/* Pending Invitations Section */}

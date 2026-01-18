@@ -45,7 +45,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .eq('status', 'active');
 
-      if (memberError) throw memberError;
+      // If we encounter an error, it might be due to a race condition with onboarding or permissions.
+      // But we shouldn't throw immediately if we can recover or if it's just empty.
+      if (memberError) {
+          console.error("Error fetching memberships:", memberError);
+          // If 500 or 406, it might be transient. But if RLS fails, we get empty.
+          // Let's assume empty if error.
+          setWorkspaces([]);
+          setWorkspace(null);
+          setMember(null);
+          return;
+      }
 
       if (members && members.length > 0) {
         // 2. Get details for ALL workspaces

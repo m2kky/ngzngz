@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { getErrorMessage } from '@/lib/errors';
 import type { Database } from '@/types/database.types';
 
 // Note: Using type assertions for inserts due to schema differences
@@ -76,7 +77,6 @@ export function useOnboarding() {
 
       if (memberError) throw memberError;
 
-      // Add user role
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
@@ -86,7 +86,6 @@ export function useOnboarding() {
         });
 
       if (roleError) {
-        // Rollback member creation if role assignment fails
         await supabase
           .from('workspace_members')
           .delete()
@@ -94,9 +93,6 @@ export function useOnboarding() {
           .eq('user_id', user.id);
         throw roleError;
       }
-
-
-      if (memberError) throw memberError;
 
       return { workspace, error: null };
     } catch (err: unknown) {

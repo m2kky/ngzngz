@@ -2,10 +2,19 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import type { Database } from '@/types/database.types';
+import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
+
+type VerifyInviteTokenRow = {
+  workspace_id: string;
+  workspace_name: string;
+  email: string | null;
+  role_id: string | null;
+  expires_at: string | null;
+  used_at: string | null;
+};
 
 export function AcceptInvitePage() {
   const { token } = useParams<{ token: string }>();
@@ -13,8 +22,7 @@ export function AcceptInvitePage() {
   const { user, loading: authLoading } = useAuth();
   
   const [status, setStatus] = useState<'verifying' | 'valid' | 'invalid' | 'accepting' | 'success' | 'error'>('verifying');
-  const [inviteDetails, setInviteDetails] = useState<{ workspace_name: string; email: string } | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [inviteDetails, setInviteDetails] = useState<{ workspace_name: string; email: string | null } | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
@@ -26,37 +34,25 @@ export function AcceptInvitePage() {
       }
 
       try {
-        // Fetch invitation details
-        const { data: invite, error } = await supabase
-          .from('invitations')
-          .select('*, workspaces(name)')
-          .eq('token', token)
-          .single();
+        const { data, error } = await supabase.rpc('verify_invite_token', { lookup_token: token } as { lookup_token: string });
+        const rows = data as unknown as VerifyInviteTokenRow[] | null;
 
-        if (error || !invite) {
-           throw new Error('Invitation not found or expired.');
+        if (error || !rows || rows.length === 0) {
+          throw new Error('Invitation not found or expired.');
         }
 
-        if (invite.status === 'accepted') {
-           throw new Error('This invitation has already been used.');
-        }
+        const invite = rows[0];
 
-        // Check expiration
-        if (new Date(invite.expires_at) < new Date()) {
-           throw new Error('This invitation has expired.');
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setInviteDetails({ 
-            workspace_name: (invite.workspaces as any)?.name || 'Unknown Workspace', 
-            email: invite.email 
+        setInviteDetails({
+          workspace_name: invite.workspace_name || 'Unknown Workspace',
+          email: invite.email ?? null,
         });
         setStatus('valid');
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err);
         setStatus('invalid');
-        setErrorMessage(err.message);
+        setErrorMessage(err instanceof Error ? err.message : 'Invitation not found or expired.');
       }
     }
 
@@ -71,7 +67,7 @@ export function AcceptInvitePage() {
         // Call secure RPC function
         const { error: rpcError } = await supabase.rpc('accept_invitation', {
             lookup_token: token
-        } as any);
+        } as { lookup_token: string });
 
         if (rpcError) throw rpcError;
 
@@ -82,10 +78,10 @@ export function AcceptInvitePage() {
             window.location.href = '/'; // Hard reload to pick up new context
         }, 2000);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error(err);
         setStatus('error');
-        setErrorMessage(err.message || 'Failed to accept invitation.');
+        setErrorMessage(getErrorMessage(err) || 'Failed to accept invitation.');
     }
   };
 
@@ -133,9 +129,15 @@ export function AcceptInvitePage() {
 
             {(status === 'valid' || status === 'accepting') && (
                 <>
-                    <div className="text-sm text-muted-foreground bg-[#2c2c2c] px-4 py-2 rounded-md border border-[#3c3c3c]">
-                        Invitation for: <span className="text-white font-medium">{inviteDetails?.email}</span>
-                    </div>
+                    {inviteDetails?.email ? (
+                        <div className="text-sm text-muted-foreground bg-[#2c2c2c] px-4 py-2 rounded-md border border-[#3c3c3c]">
+                            Invitation for: <span className="text-white font-medium">{inviteDetails.email}</span>
+                        </div>
+                    ) : (
+                        <div className="text-sm text-muted-foreground bg-[#2c2c2c] px-4 py-2 rounded-md border border-[#3c3c3c]">
+                            <span className="text-white font-medium">Public Invite Link</span>
+                        </div>
+                    )}
 
                     {!user ? (
                         <div className="w-full space-y-3">
@@ -151,7 +153,7 @@ export function AcceptInvitePage() {
                         </div>
                     ) : (
                         <div className="w-full">
-                            {user.email !== inviteDetails?.email && (
+                            {inviteDetails?.email && user.email !== inviteDetails?.email && (
                                 <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-xs text-yellow-500 text-center">
                                     Warning: You are logged in as {user.email}, but this invite was sent to {inviteDetails?.email}. 
                                     You can still accept it to add {user.email} to the workspace.

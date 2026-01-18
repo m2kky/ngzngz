@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Mail, Copy, Trash2, Loader2 } from 'lucide-react';
+import { Mail, Copy, Trash2, Loader2, Link as LinkIcon } from 'lucide-react';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useInvitations } from '@/hooks/useInvitations';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { useRoles } from '@/hooks/useRoles';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -18,17 +19,21 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/errors';
 
 export function MembersSettings() {
   const { members, loading: membersLoading } = useWorkspaceMembers();
-  const { invitations, createInvitation, revokeInvitation, fetchInvitations } = useInvitations();
+  const { invitations, createInvitation, createInviteLink, revokeInvitation, fetchInvitations } = useInvitations();
   const { workspace } = useWorkspace();
   const { assignableRoles, roles, isLoading: rolesLoading } = useRoles();
+  const { can } = usePermissions();
   
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [isInviting, setIsInviting] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
   // Initial fetch of invitations
   useEffect(() => {
@@ -40,21 +45,38 @@ export function MembersSettings() {
      setIsInviting(true);
      try {
         await createInvitation({ email: inviteEmail, role_id: selectedRoleId });
+        await fetchInvitations();
         setShowInviteDialog(false);
         setInviteEmail('');
         setSelectedRoleId('');
-     } catch (err) {
-        // Error handling matches global patterns; simplified for brevity
-        console.error(err);
+        toast.success('Invitation sent successfully');
+     } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || 'Failed to send invitation');
      } finally {
         setIsInviting(false);
      }
   };
 
+  const handleGenerateLink = async () => {
+    if (!selectedRoleId) return;
+    setIsInviting(true);
+    try {
+      const link = await createInviteLink(selectedRoleId);
+      await fetchInvitations();
+      setGeneratedLink(link);
+      navigator.clipboard.writeText(link);
+      toast.success('Link copied to clipboard');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || 'Failed to generate link');
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
   const copyInviteLink = (token: string) => {
      const link = `${window.location.origin}/invite/${token}`;
      navigator.clipboard.writeText(link);
-     // In a real app, show a toast here
+     toast.success('Link copied to clipboard');
   };
 
   const getRoleName = (roleId: string | null) => {
@@ -77,7 +99,11 @@ export function MembersSettings() {
           <h2 className="text-xl font-semibold mb-1">Members</h2>
           <p className="text-sm text-muted-foreground">Manage workspace access and roles.</p>
         </div>
-        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        {can.create('settings') && (
+          <Dialog open={showInviteDialog} onOpenChange={(open) => {
+            setShowInviteDialog(open);
+            if (!open) setGeneratedLink(null);
+          }}>
            <DialogTrigger asChild>
              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
                <Mail className="w-4 h-4 mr-2" />
@@ -92,15 +118,6 @@ export function MembersSettings() {
                  </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                 <div className="space-y-2">
-                    <Label>Email Address</Label>
-                    <Input 
-                       placeholder="colleague@example.com" 
-                       value={inviteEmail}
-                       onChange={(e) => setInviteEmail(e.target.value)}
-                       className="bg-[#2c2c2c] border-[#3c3c3c] text-white"
-                    />
-                 </div>
                  <div className="space-y-2">
                     <Label>Role</Label>
                     <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
@@ -126,16 +143,60 @@ export function MembersSettings() {
                        </SelectContent>
                     </Select>
                  </div>
+
+                 {/* Invite Methods Tabs or simple divider */}
+                 <div className="grid grid-cols-1 gap-4 pt-2">
+                    <div className="space-y-2">
+                      <Label>Invite by Email</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="colleague@example.com" 
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          className="bg-[#2c2c2c] border-[#3c3c3c] text-white"
+                        />
+                        <Button onClick={handleInvite} disabled={isInviting || !inviteEmail || !selectedRoleId}>
+                          {isInviting && inviteEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-[#2c2c2c]" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-[#191919] px-2 text-muted-foreground">Or share a link</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Direct Link</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1 bg-[#2c2c2c] border border-[#3c3c3c] rounded-md px-3 py-2 text-sm text-muted-foreground truncate h-10 flex items-center">
+                          {generatedLink || 'Select a role to generate link'}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleGenerateLink} 
+                          disabled={isInviting || !selectedRoleId}
+                          className="border-[#3c3c3c] hover:bg-[#2c2c2c]"
+                        >
+                          {isInviting && !inviteEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <LinkIcon className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                      {generatedLink && (
+                        <p className="text-xs text-green-500">Link copied to clipboard! Anyone with this link can join.</p>
+                      )}
+                    </div>
+                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                 <Button variant="ghost" onClick={() => setShowInviteDialog(false)}>Cancel</Button>
-                 <Button onClick={handleInvite} disabled={isInviting || !inviteEmail || !selectedRoleId}>
-                    {isInviting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Send Invite
-                 </Button>
+                 <Button variant="ghost" onClick={() => setShowInviteDialog(false)}>Close</Button>
               </div>
            </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Pending Invitations Section */}

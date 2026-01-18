@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -29,7 +30,7 @@ export function usePermissions() {
   // ============================================
   // PERMISSION CHECK FUNCTION
   // ============================================
-  const hasPermission = (module: ResourceModule, action: PermissionAction): boolean => {
+  const hasPermission = useCallback((module: ResourceModule, action: PermissionAction): boolean => {
     if (!permissions) return false;
     
     const modulePerms = permissions[module];
@@ -37,25 +38,25 @@ export function usePermissions() {
     
     // Check specific action or manage (which grants all)
     return modulePerms[action] === true || modulePerms.manage === true;
-  };
+  }, [permissions]);
   
   // ============================================
   // IS ADMIN CHECK (has settings.manage)
   // ============================================
-  const isAdmin = (): boolean => {
+  const isAdmin = useCallback((): boolean => {
     return permissions?.settings?.manage === true;
-  };
+  }, [permissions]);
   
   // ============================================
   // CAN PERFORM ACTION (convenience wrapper)
   // ============================================
-  const can = {
+  const can = useMemo(() => ({
     view: (module: ResourceModule) => hasPermission(module, 'view'),
     create: (module: ResourceModule) => hasPermission(module, 'create'),
     edit: (module: ResourceModule) => hasPermission(module, 'edit'),
     delete: (module: ResourceModule) => hasPermission(module, 'delete'),
     manage: (module: ResourceModule) => hasPermission(module, 'manage'),
-  };
+  }), [hasPermission]);
   
   return {
     permissions,

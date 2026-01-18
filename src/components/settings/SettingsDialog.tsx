@@ -6,7 +6,8 @@ import {
   Globe, 
   CreditCard, 
   Users, 
-  Building
+  Building,
+  Shield
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
@@ -24,13 +25,14 @@ import { WorkspaceSettings } from '@/features/settings/components/tabs/Workspace
 import { MembersSettings } from '@/features/settings/components/tabs/MembersSettings';
 import { BillingSettings } from '@/features/settings/components/tabs/BillingSettings';
 import { NotificationsSettings } from '@/features/settings/components/tabs/NotificationsSettings';
+import { RolesSettings } from '@/features/settings/components/tabs/RolesSettings';
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type SettingsTab = 'account' | 'notifications' | 'appearance' | 'language' | 'workspace' | 'members' | 'billing';
+type SettingsTab = 'account' | 'notifications' | 'appearance' | 'language' | 'workspace' | 'members' | 'billing' | 'roles';
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
@@ -51,6 +53,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       items: [
         { id: 'workspace', label: 'General', icon: Building },
         { id: 'members', label: 'Members', icon: Users },
+        { id: 'roles', label: 'Roles & Permissions', icon: Shield },
         { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
       ]
     }
@@ -123,6 +126,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 {activeTab === 'language' && <LanguageSettings />}
                 {activeTab === 'workspace' && <WorkspaceSettings />}
                 {activeTab === 'members' && <MembersSettings />}
+                {activeTab === 'roles' && <RolesSettings />}
                 {activeTab === 'billing' && <BillingSettings />}
               </div>
             </div>

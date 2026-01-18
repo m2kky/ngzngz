@@ -1,10 +1,20 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import type { Database } from '@/types/database.types';
 
-type Invitation = Database['public']['Tables']['invitations']['Row'];
-type CreateInvitationParams = Database['public']['Tables']['invitations']['Insert'];
+// Define types manually since database.types.ts might be out of sync regarding the new 'invites' table
+export interface Invitation {
+  id: string;
+  workspace_id: string;
+  email: string;
+  role: string | null;
+  role_id: string | null;
+  status: 'pending' | 'accepted' | 'declined';
+  token: string;
+  expires_at: string;
+  created_at: string;
+  created_by: string | null;
+}
 
 export function useInvitations() {
   const { workspace } = useWorkspace();
@@ -18,15 +28,16 @@ export function useInvitations() {
     setLoading(true);
     setError(null);
     try {
+      // Switch to 'invites' table as per RBAC instructions
       const { data, error: fetchError } = await supabase
-        .from('invitations')
+        .from('invites')
         .select('*')
         .eq('workspace_id', workspace.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setInvitations(data || []);
+      setInvitations(data as Invitation[] || []);
     } catch (err: any) {
       console.error('Error fetching invitations:', err);
       setError(err.message || 'Failed to fetch invitations');
@@ -35,20 +46,20 @@ export function useInvitations() {
     }
   }, [workspace]);
 
-  const createInvitation = async ({ email, role }: { email: string; role: 'owner' | 'admin' | 'member' | 'guest' }) => {
+  const createInvitation = async ({ email, role_id }: { email: string; role_id: string }) => {
     if (!workspace) throw new Error('No active workspace');
 
     setLoading(true);
     setError(null);
     try {
       const { data, error: createError } = await supabase
-        .from('invitations')
+        .from('invites')
         .insert({
           workspace_id: workspace.id,
           email,
-          role,
-          status: 'pending' // Default, explicitly set for clarity
-        } as CreateInvitationParams)
+          role_id, // Use role_id for RBAC
+          status: 'pending'
+        })
         .select()
         .single();
 
@@ -60,7 +71,7 @@ export function useInvitations() {
         throw createError;
       }
 
-      setInvitations(prev => [data, ...prev]);
+      setInvitations(prev => [data as Invitation, ...prev]);
       return data;
     } catch (err: any) {
       console.error('Error creating invitation:', err);
@@ -76,7 +87,7 @@ export function useInvitations() {
     setError(null);
     try {
       const { error: deleteError } = await supabase
-        .from('invitations')
+        .from('invites')
         .delete()
         .eq('id', invitationId);
 

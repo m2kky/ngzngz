@@ -3,6 +3,7 @@ import { Mail, Copy, Trash2, Loader2 } from 'lucide-react';
 import { useWorkspaceMembers } from '@/hooks/useWorkspaceMembers';
 import { useInvitations } from '@/hooks/useInvitations';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useRoles } from '@/hooks/useRoles';
 import {
   Dialog,
   DialogContent,
@@ -22,10 +23,11 @@ export function MembersSettings() {
   const { members, loading: membersLoading } = useWorkspaceMembers();
   const { invitations, createInvitation, revokeInvitation, fetchInvitations } = useInvitations();
   const { workspace } = useWorkspace();
+  const { assignableRoles, roles, isLoading: rolesLoading } = useRoles();
   
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [isInviting, setIsInviting] = useState(false);
 
   // Initial fetch of invitations
@@ -34,13 +36,13 @@ export function MembersSettings() {
   }, [fetchInvitations]);
 
   const handleInvite = async () => {
-     if (!inviteEmail) return;
+     if (!inviteEmail || !selectedRoleId) return;
      setIsInviting(true);
      try {
-        await createInvitation({ email: inviteEmail, role: inviteRole });
+        await createInvitation({ email: inviteEmail, role_id: selectedRoleId });
         setShowInviteDialog(false);
         setInviteEmail('');
-        setInviteRole('member');
+        setSelectedRoleId('');
      } catch (err) {
         // Error handling matches global patterns; simplified for brevity
         console.error(err);
@@ -53,6 +55,18 @@ export function MembersSettings() {
      const link = `${window.location.origin}/invite/${token}`;
      navigator.clipboard.writeText(link);
      // In a real app, show a toast here
+  };
+
+  const getRoleName = (roleId: string | null) => {
+    if (!roleId) return 'Unknown';
+    const role = roles.find(r => r.id === roleId);
+    return role ? role.name : 'Unknown Role';
+  };
+
+  const getRoleColor = (roleId: string | null) => {
+    if (!roleId) return '#6366f1';
+    const role = roles.find(r => r.id === roleId);
+    return role?.color || '#6366f1';
   };
 
   return (
@@ -89,20 +103,33 @@ export function MembersSettings() {
                  </div>
                  <div className="space-y-2">
                     <Label>Role</Label>
-                    <Select value={inviteRole} onValueChange={(v: 'admin' | 'member') => setInviteRole(v)}>
+                    <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
                        <SelectTrigger className="bg-[#2c2c2c] border-[#3c3c3c] text-white">
-                          <SelectValue />
+                          <SelectValue placeholder="Select a role" />
                        </SelectTrigger>
                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
+                          {rolesLoading ? (
+                            <div className="p-2 text-sm text-muted-foreground text-center">Loading roles...</div>
+                          ) : (
+                            assignableRoles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                <div className="flex items-center gap-2">
+                                  <span 
+                                    className="w-2 h-2 rounded-full" 
+                                    style={{ backgroundColor: role.color || '#6366f1' }} 
+                                  />
+                                  {role.name}
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
                        </SelectContent>
                     </Select>
                  </div>
               </div>
               <div className="flex justify-end gap-2">
                  <Button variant="ghost" onClick={() => setShowInviteDialog(false)}>Cancel</Button>
-                 <Button onClick={handleInvite} disabled={isInviting || !inviteEmail}>
+                 <Button onClick={handleInvite} disabled={isInviting || !inviteEmail || !selectedRoleId}>
                     {isInviting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Send Invite
                  </Button>
@@ -125,7 +152,14 @@ export function MembersSettings() {
                         <div>
                            <div className="font-medium text-sm">{inv.email}</div>
                            <div className="text-xs text-muted-foreground flex items-center gap-2">
-                              <span>{inv.role}</span>
+                              {/* Use role_id to look up role name, fallback to inv.role if available */}
+                              <div className="flex items-center gap-1.5">
+                                <span 
+                                  className="w-1.5 h-1.5 rounded-full" 
+                                  style={{ backgroundColor: getRoleColor(inv.role_id) }} 
+                                />
+                                <span>{getRoleName(inv.role_id) || inv.role || 'Unknown Role'}</span>
+                              </div>
                               <span>•</span>
                               <span>Expires in 7 days</span>
                            </div>
@@ -168,6 +202,13 @@ export function MembersSettings() {
                </div>
             </div>
             <div className="flex items-center gap-4">
+               {/* Note: member.role is currently a string in useWorkspaceMembers, 
+                   ideally we should join with roles table in backend or map it here if we have role_id.
+                   Assuming member object has role_id or role name. 
+                   If it's just a name string from old system, we display it. 
+                   If we updated backend to return role object, we could use that.
+                   For now, we just display what we have.
+               */}
                <Badge variant="outline" className="capitalize bg-[#2c2c2c] border-[#3c3c3c] text-muted-foreground font-normal">
                   {member.role}
                </Badge>

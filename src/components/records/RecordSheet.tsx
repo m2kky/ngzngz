@@ -65,7 +65,6 @@ const PRIORITY_OPTIONS: PropertyOption[] = [
 ];
 
 import { ClientReviewControls } from "./ClientReviewControls";
-import { TaskWorkflowControls } from "@/features/tasks/components/TaskWorkflowControls";
 
 export function RecordSheet({ open, onClose, recordId, type }: RecordSheetProps) {
   const [mode, setMode] = useState<ViewMode>('side');
@@ -536,10 +535,7 @@ function RecordContent({
 
                {/* Client Controls (Fixed at top of content, but scrollable with page or fixed? Fixed is better visibility) */}
                {type === 'task' && record && (
-                 <>
-                   <TaskWorkflowControls task={record} onUpdate={fetchRecord} />
-                   <ClientReviewControls record={record} onUpdate={fetchRecord} />
-                 </>
+                  <ClientReviewControls record={record} onUpdate={fetchRecord} />
                )}
 
                <ScrollArea className="flex-1 h-full"> 

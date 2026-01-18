@@ -96,16 +96,12 @@ const NAV_GROUPS: NavGroup[] = [
     }
 ]
 
-import { usePermission } from "@/features/auth/context/RBACContext"
-
 export function Sidebar({ workspaceName, workspaceLogo, workspaceId, userRole }: SidebarProps) {
     const pathname = usePathname()
     const [isCollapsed, setIsCollapsed] = useState(false)
-    const { can } = usePermission()
 
-    // Map old role checks to permissions
-    const canManageTeam = can('manage', 'settings')
-    const canViewSettings = can('view', 'settings')
+    const isAdmin = ADMIN_ROLES.includes(userRole)
+    const isMediaBuyer = userRole === 'MEDIA_BUYER'
 
     const handleLogout = async () => {
         window.location.href = "/login"
@@ -189,23 +185,14 @@ export function Sidebar({ workspaceName, workspaceLogo, workspaceId, userRole }:
                 {/* Navigation Groups */}
                 <div className="flex-1 py-6 px-2 space-y-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
                     {NAV_GROUPS.map((group) => {
-                        // Filter items based on permission
+                        // Filter items based on role
                         const visibleItems = group.items.filter(item => {
                             if (item.hidden) return false
-                            
-                            // Map paths to resources
-                            // Logic: If item needs specific permission, check it.
-                            if (item.path === "/ads") return can('view', 'ads');
-                            if (item.path === "/strategy") return can('view', 'strategy');
-                            if (item.path === "/squad") return can('view', 'settings');
-                            if (item.path === "/reports") return can('view', 'finance') || can('view', 'ads'); // Assuming reports linked to finance/ads
-                            if (item.path === "/automation") return can('manage', 'settings');
-                            
-                            // Default: Allow tasks, dashboard, projects, etc. if no specific restriction
-                            // Or stricter:
-                            if (item.path === "/tasks") return can('view', 'tasks');
-                            // if (item.path === "/projects") return can('view', 'projects'); // Not in map yet, assume safe
-                            
+                            if (item.adminOnly && !isAdmin) {
+                                // Special case: Media Buyer sees Ad Center
+                                if (item.path === "/ads" && isMediaBuyer) return true
+                                return false
+                            }
                             return true
                         })
 
@@ -231,7 +218,7 @@ export function Sidebar({ workspaceName, workspaceLogo, workspaceId, userRole }:
                 {/* Footer */}
                 <div className="p-2 border-t border-white/10 space-y-1">
                     {/* Invite Button - Admin Only */}
-                    {canManageTeam && (
+                    {isAdmin && (
                         <InviteModal workspaceId={workspaceId}>
                             <Button
                                 variant="ghost"
@@ -247,7 +234,7 @@ export function Sidebar({ workspaceName, workspaceLogo, workspaceId, userRole }:
                     )}
 
 
-                    {canViewSettings && (
+                    {isAdmin && (
                         <NavItem
                             item={{ name: "Settings", icon: SettingsIcon, path: "/settings" }}
                             isActive={pathname === "/settings"}

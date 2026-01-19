@@ -124,7 +124,7 @@ export function AcceptInvitePage() {
             )}
 
             {status === 'success' && (
-                 <CheckCircle className="w-16 h-16 text-green-500 opacity-80" />
+                <CheckCircle className="w-16 h-16 text-green-500 opacity-80" />
             )}
 
             {(status === 'valid' || status === 'accepting') && (

@@ -79,7 +79,7 @@ export function WorkspaceSwitcher() {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
+        {/* <DropdownMenuItem 
             className="cursor-pointer gap-2"
             onClick={() => navigate('/onboarding')}
         >
@@ -87,7 +87,7 @@ export function WorkspaceSwitcher() {
             <Plus className="h-4 w-4" />
           </div>
           Create Workspace
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
       </DropdownMenuContent>
     </DropdownMenu>
   )

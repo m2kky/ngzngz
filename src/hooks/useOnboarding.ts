@@ -4,8 +4,11 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { getErrorMessage } from '@/lib/errors';
 import type { Database } from '@/types/database.types';
 
-// Note: Using type assertions for inserts due to schema differences
-type WorkspaceInsert = Database['public']['Tables']['workspaces']['Insert'];
+type Workspace = Database['public']['Tables']['workspaces']['Row'];
+type Client = Database['public']['Tables']['clients']['Row'];
+type Project = Database['public']['Tables']['projects']['Row'];
+type Task = Database['public']['Tables']['tasks']['Row'];
+
 type ClientInsert = Database['public']['Tables']['clients']['Insert'];
 type ProjectInsert = Database['public']['Tables']['projects']['Insert'];
 type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
@@ -45,54 +48,26 @@ export function useOnboarding() {
       // Generate a base slug and append a random suffix to ensure uniqueness
       const baseSlug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
-      // Note: Using type assertion due to schema mismatch between code and database types
-      const workspaceData: WorkspaceInsert = {
-        name: data.name,
-        slug,
-        visibility: data.visibility || 'private',
-        created_by: user.id,
-        // These fields may not exist in the current database schema
-        // theme: 'dark',
-        // background_type: 'gradient',
-        // background_value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      };
 
-      const { data: workspace, error: workspaceError } = await supabase
+      // Use RPC for atomic creation
+      const { data: workspaceId, error: rpcError } = await supabase
+        .rpc('create_workspace_complete', {
+          p_name: data.name,
+          p_slug: slug,
+          p_visibility: data.visibility || 'private'
+        });
+
+      if (rpcError) throw rpcError;
+      if (!workspaceId) throw new Error('Failed to create workspace');
+
+      // Fetch the created workspace to return it
+      const { data: workspace, error: fetchError } = await supabase
         .from('workspaces')
-        .insert(workspaceData)
-        .select()
-        .returns<Database['public']['Tables']['workspaces']['Row']>()
+        .select('*')
+        .eq('id', workspaceId)
         .single();
 
-      if (workspaceError) throw workspaceError;
-
-      // Add user as owner to workspace_members
-      const { error: memberError } = await supabase
-        .from('workspace_members')
-        .insert({
-          workspace_id: workspace.id,
-          user_id: user.id,
-          status: 'active',
-        });
-
-      if (memberError) throw memberError;
-
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          workspace_id: workspace.id,
-          user_id: user.id,
-          role: 'owner',
-        });
-
-      if (roleError) {
-        await supabase
-          .from('workspace_members')
-          .delete()
-          .eq('workspace_id', workspace.id)
-          .eq('user_id', user.id);
-        throw roleError;
-      }
+      if (fetchError) throw fetchError;
 
       return { workspace, error: null };
     } catch (err: unknown) {
@@ -111,6 +86,7 @@ export function useOnboarding() {
     try {
       const baseSlug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+      
       const clientData: ClientInsert = {
         workspace_id: workspaceId,
         name: data.name,
@@ -172,19 +148,17 @@ export function useOnboarding() {
     setError(null);
 
     try {
-      // Note: Using simplified fields due to schema differences
       const taskData: TaskInsert = {
         workspace_id: workspaceId,
         title: data.title,
         project_id: data.project_id || null,
-        // status and priority format may differ in actual schema
+        status: 'backlog', // Default status
       };
 
       const { data: task, error: taskError } = await supabase
         .from('tasks')
         .insert(taskData)
         .select()
-        .returns<Database['public']['Tables']['tasks']['Row']>()
         .single();
 
       if (taskError) throw taskError;
@@ -229,15 +203,43 @@ export function useOnboarding() {
 
       // If has invite token, check if valid
       if (inviteToken) {
+        // Check workspace_invites first (preferred)
         const { data: invitation } = await supabase
-          .from('invitations')
+          .from('workspace_invites')
           .select('*')
           .eq('token', inviteToken)
           .eq('workspace_id', workspaceId)
-          .eq('status', 'pending')
+          .eq('status', 'PENDING') // Assuming uppercase status based on recent conventions
           .single();
 
         if (invitation) {
+            // Get role ID for the invited role
+            // The invitation stores role as enum (ADMIN, etc), but we need role_id for workspace_members
+            // We need to look up the role by name/slug. 
+            // NOTE: The role names in 'roles' table are 'Owner', 'Admin', 'Member' etc.
+            // The invitation role is likely 'ADMIN', 'SQUAD_MEMBER' etc.
+            // We need a mapping or just default to Member if mismatch.
+            
+            // Map invitation role to role slug
+            const roleMap: Record<string, string> = {
+                'ADMIN': 'admin',
+                'ACCOUNT_MANAGER': 'admin', // Map to admin?
+                'SQUAD_MEMBER': 'member',
+                'MEDIA_BUYER': 'member',
+                'CLIENT': 'member' // Or guest
+            };
+            
+            const roleSlug = roleMap[invitation.role] || 'member';
+
+            const { data: roleData } = await supabase
+                .from('roles')
+                .select('id')
+                .eq('workspace_id', workspaceId)
+                .eq('slug', roleSlug)
+                .single();
+            
+            if (!roleData) throw new Error('Role configuration error');
+
           // Valid invite, add to workspace
           const { error: memberError } = await supabase
             .from('workspace_members')
@@ -245,31 +247,15 @@ export function useOnboarding() {
               workspace_id: workspaceId,
               user_id: user.id,
               status: 'active',
+              role_id: roleData.id
             });
-
-          if (memberError) throw memberError;
-
-          // Assign role from invitation
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .insert({
-              workspace_id: workspaceId,
-              user_id: user.id,
-              role: invitation.role || 'guest',
-            });
-
-          if (roleError) {
-             await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId).eq('user_id', user.id);
-             throw roleError;
-          }
-
 
           if (memberError) throw memberError;
 
           // Mark invitation as accepted
           await supabase
-            .from('invitations')
-            .update({ status: 'accepted' })
+            .from('workspace_invites')
+            .update({ status: 'ACCEPTED' })
             .eq('id', invitation.id);
 
           return { success: true, error: null, requiresApproval: false };
@@ -278,48 +264,28 @@ export function useOnboarding() {
 
       // If public workspace, auto-join
       if (workspace.visibility === 'public') {
+        // Get 'Member' role
+        const { data: roleData } = await supabase
+            .from('roles')
+            .select('id')
+            .eq('workspace_id', workspaceId)
+            .eq('slug', 'member')
+            .single();
+
         const { error: memberError } = await supabase
           .from('workspace_members')
           .insert({
             workspace_id: workspaceId,
             user_id: user.id,
             status: 'active',
+            role_id: roleData?.id // If null, it might fail constraints, which is good
           });
-
-        if (memberError) throw memberError;
-
-        // Assign guest role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            workspace_id: workspaceId,
-            user_id: user.id,
-            role: 'guest',
-          });
-
-        if (roleError) {
-            await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId).eq('user_id', user.id);
-            throw roleError;
-        }
-
 
         if (memberError) throw memberError;
 
         return { success: true, error: null, requiresApproval: false };
       }
 
-      // Private workspace without invite - create join request
-      // TODO: workspace_join_requests table doesn't exist in the database schema
-      // For now, just indicate that approval is required (feature disabled)
-      // const { error: requestError } = await supabase
-      //   .from('workspace_join_requests')
-      //   .insert({
-      //     workspace_id: workspaceId,
-      //     user_id: user.id,
-      //     status: 'pending',
-      //   });
-      // if (requestError) throw requestError;
-      // Feature disabled: join requests not supported yet
       return { success: false, error: 'This workspace requires an invitation to join. Please contact the workspace admin.', requiresApproval: true };
     } catch (err: unknown) {
       const errorMessage = getErrorMessage(err) || 'Failed to join workspace';

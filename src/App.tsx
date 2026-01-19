@@ -13,8 +13,7 @@ import { AdsLandingPage } from "@/features/ads/pages/AdsLandingPage";
 import { ClientAdsPage } from "@/features/ads/pages/ClientAdsPage";
 import { RecordPage } from "@/components/records/RecordPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
-import { OnboardingPage } from "@/features/onboarding/pages/OnboardingPage";
-import { AcceptInvitePage } from "@/features/onboarding/pages/AcceptInvitePage";
+import { AcceptInvitePage } from "@/features/auth/pages/AcceptInvitePage";
 import { SignupPage } from "@/features/auth/pages/SignupPage";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
@@ -40,11 +39,6 @@ function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirect to onboarding if no workspace
-  if (!workspace) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
   return (
     <AppShell>
       <Outlet />
@@ -61,7 +55,6 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
-            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/invite/:token" element={<AcceptInvitePage />} />
             
             <Route element={<ProtectedRoute />}>
